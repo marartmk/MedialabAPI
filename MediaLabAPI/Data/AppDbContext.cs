@@ -17,6 +17,8 @@ public partial class AppDbContext : DbContext
     }
 
     public virtual DbSet<C_ANA_Company> C_ANA_Companies { get; set; }
+    public virtual DbSet<SysAdmin> SysAdmins { get; set; }
+    public virtual DbSet<SysUser> SysUsers { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -117,7 +119,85 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.usernameGPSServer).HasMaxLength(100);
         });
 
+        modelBuilder.Entity<SysAdmin>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__SYS_Admi__3214EC07A68B7A23");
+
+            entity.ToTable("SYS_Admins");
+
+            entity.HasIndex(e => e.Username, "UQ__SYS_Admi__536C85E4DE0CA509").IsUnique();
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.IdCompany)
+                .IsRequired();
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.Email).HasMaxLength(100);
+            entity.Property(e => e.FullName).HasMaxLength(100);
+            entity.Property(e => e.IsEnabled).HasDefaultValue(true);
+            entity.Property(e => e.IsSuperAdmin).HasDefaultValue(false);
+            entity.Property(e => e.LastLogin).HasColumnType("datetime");
+            entity.Property(e => e.PasswordHash)
+                .IsRequired()
+                .HasMaxLength(256);
+            entity.Property(e => e.Username)
+                .IsRequired()
+                .HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<SysUser>(entity =>
+        {
+            entity.ToTable("SYS_Users");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasColumnName("Id")
+                .ValueGeneratedNever();
+
+            entity.Property(e => e.IdWhr)
+                .HasColumnName("IdWhr");
+
+            entity.Property(e => e.IdCompany)
+                .IsRequired()
+                .HasColumnName("IdCompany");
+
+            entity.Property(e => e.Username)
+                .IsRequired()
+                .HasMaxLength(100)
+                .HasColumnName("Username");
+
+            entity.Property(e => e.PasswordHash)
+                .IsRequired()
+                .HasMaxLength(256)
+                .HasColumnName("PasswordHash");
+
+            entity.Property(e => e.Email)
+                .HasMaxLength(100)
+                .HasColumnName("Email");
+
+            entity.Property(e => e.IsAdmin)
+                .IsRequired()
+                .HasColumnName("IsAdmin");
+
+            entity.Property(e => e.IsEnabled)
+                .IsRequired()
+                .HasColumnName("IsEnabled");
+
+            entity.Property(e => e.AccessLevel)
+                .HasMaxLength(50)
+                .HasColumnName("AccessLevel");
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("CreatedAt");
+
+            entity.Property(e => e.LastLogin).HasColumnType("datetime");
+        });
+
         OnModelCreatingPartial(modelBuilder);
+
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);

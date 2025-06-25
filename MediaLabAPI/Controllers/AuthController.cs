@@ -6,6 +6,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using MediaLabAPI.Configurations;
+using MediaLabAPI.Data;
 
 namespace MediaLabAPI.Controllers
 {
@@ -14,10 +15,12 @@ namespace MediaLabAPI.Controllers
     public class AuthController : ControllerBase
     {
         private readonly JwtSettings _jwt;
+        private readonly AppDbContext _db;
 
-        public AuthController(IOptions<JwtSettings> jwtOptions)
+        public AuthController(IOptions<JwtSettings> jwtOptions, AppDbContext db)
         {
             _jwt = jwtOptions.Value;
+            _db = db;
         }
 
         public class LoginRequest
@@ -35,13 +38,41 @@ namespace MediaLabAPI.Controllers
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
-            if (request.Username == "admin@nextsrl.it" && request.Password == "test")
-            {
-                var jwt = GenerateJwtToken(request.Username, "Admin");
-                return Ok(new { token = jwt });
-            }
+            // Verifica che i parametri siano presenti
+            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+                return BadRequest("Username e Password sono obbligatori");
 
-            return Unauthorized("Invalid credentials");
+            // Cerca l'utente nel db nel DB
+            var user = _db.SysUsers.FirstOrDefault(a =>
+                a.Username == request.Username &&
+                a.IsEnabled == true);
+
+            if (user == null)
+                return Unauthorized("Utente amministratore non trovato o disabilitato");
+
+            // Verifica la password hashata
+            var inputPasswordHash = Convert.ToBase64String(
+                System.Security.Cryptography.SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(request.Password))
+            );
+
+            if (user.PasswordHash != inputPasswordHash)
+                return Unauthorized("Password errata");
+
+            // Aggiorna data ultimo accesso
+            user.LastLogin = DateTime.UtcNow;
+            _db.SaveChanges();          
+
+            // Genera il token
+            var jwt = GenerateJwtToken(request.Username, "Admin");
+
+            return Ok(new
+            {
+                token = jwt,
+                fullName = user.Username,
+                email = user.Email,
+                id = user.Id,
+                idCompany = user.IdCompany
+            });
         }
 
         // 📝 REGISTRAZIONE (mock)
@@ -137,6 +168,48 @@ namespace MediaLabAPI.Controllers
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
         }
+
+        // 🔐 LOGIN ADMIN
+        [HttpPost("login-admin")]
+        public IActionResult LoginAdmin([FromBody] LoginRequest request)
+        {
+            // Verifica che i parametri siano presenti
+            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+                return BadRequest("Username e Password sono obbligatori");
+
+            // Cerca l'admin nel DB
+            var admin = _db.SysAdmins.FirstOrDefault(a =>
+                a.Username == request.Username &&
+                a.IsEnabled == true);
+
+            if (admin == null)
+                return Unauthorized("Utente amministratore non trovato o disabilitato");
+
+            // Verifica la password hashata
+            var inputPasswordHash = Convert.ToBase64String(
+                System.Security.Cryptography.SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(request.Password))
+            );
+
+            if (admin.PasswordHash != inputPasswordHash)
+                return Unauthorized("Password errata");
+
+            // Aggiorna data ultimo accesso
+            admin.LastLogin = DateTime.UtcNow;
+            _db.SaveChanges();
+
+            // Genera il token
+            var role = admin.IsSuperAdmin == true ? "SuperAdmin" : "Admin";
+            var jwt = GenerateJwtToken(admin.Username, role);
+
+            return Ok(new
+            {
+                token = jwt,
+                fullName = admin.FullName,
+                email = admin.Email,
+                idCompany = admin.IdCompany
+            });
+        }
+
     }
 }
 
