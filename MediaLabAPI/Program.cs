@@ -14,6 +14,9 @@ var keyBytes = Encoding.UTF8.GetBytes(jwtKey);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// ✅ AutoMapper
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
 // ➤ Configura CORS per permettere le richieste da React
 builder.Services.AddCors(options =>
 {

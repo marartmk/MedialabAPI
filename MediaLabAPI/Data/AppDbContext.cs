@@ -19,6 +19,7 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<C_ANA_Company> C_ANA_Companies { get; set; }
     public virtual DbSet<SysAdmin> SysAdmins { get; set; }
     public virtual DbSet<SysUser> SysUsers { get; set; }
+    public virtual DbSet<C_ANA_Operators> C_ANA_Operators { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -117,6 +118,26 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.smtpProvider).HasMaxLength(100);
             entity.Property(e => e.usernameAde).HasMaxLength(50);
             entity.Property(e => e.usernameGPSServer).HasMaxLength(100);
+            entity.Property(e => e.isTenant)
+                  .HasColumnName("isTenant");
+
+            entity.Property(e => e.isAffiliate)
+                  .HasColumnName("isAffiliate");
+
+            entity.Property(e => e.AffiliateCode)
+                  .HasMaxLength(100)
+                  .HasColumnName("AffiliateCode");
+
+            entity.Property(e => e.AffiliatedDataStart)
+                  .HasColumnName("AffiliatedDataStart")
+                  .HasColumnType("datetime2");
+
+            entity.Property(e => e.AffiliatedDataEnd)
+                  .HasColumnName("AffiliatedDataEnd")
+                  .HasColumnType("datetime2");
+
+            entity.Property(e => e.AffiliateStatus)
+                  .HasColumnName("AffiliateStatus");
         });
 
         modelBuilder.Entity<SysAdmin>(entity =>
@@ -194,6 +215,127 @@ public partial class AppDbContext : DbContext
                 .HasColumnName("CreatedAt");
 
             entity.Property(e => e.LastLogin).HasColumnType("datetime");
+        });       
+
+        modelBuilder.Entity<C_ANA_Operators>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_Users");
+
+            entity.ToTable("C_ANA_Operators");
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.Active).HasColumnName("active");
+            entity.Property(e => e.ApiKey).HasMaxLength(100);
+            entity.Property(e => e.AssunzioniSpeciale).HasMaxLength(200);
+            entity.Property(e => e.Cap).HasMaxLength(50);
+            entity.Property(e => e.CellularNumber).HasMaxLength(50);
+            entity.Property(e => e.Citta).HasMaxLength(200);
+            entity.Property(e => e.CodiceCartaCarb).HasMaxLength(200);
+            entity.Property(e => e.CodiceCategoria).HasMaxLength(200);
+            entity.Property(e => e.CodiceCausaFineRapporto).HasMaxLength(200);
+            entity.Property(e => e.CodiceContratto).HasMaxLength(200);
+            entity.Property(e => e.CodiceDipendente).HasMaxLength(200);
+            entity.Property(e => e.CodiceEsecutore)
+                .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.CodiceFiscale).HasMaxLength(200);
+            entity.Property(e => e.CodiceLivello).HasMaxLength(200);
+            entity.Property(e => e.CodiceNumeroLegge).HasMaxLength(200);
+            entity.Property(e => e.CodiceSindacato).HasMaxLength(200);
+            entity.Property(e => e.CodiceTipoContratto).HasMaxLength(200);
+            entity.Property(e => e.CodiceTipoOrarioLavoro).HasMaxLength(200);
+            entity.Property(e => e.CodiceTipoRetribuzione).HasMaxLength(200);
+            entity.Property(e => e.CodiceTitoloStudio).HasMaxLength(200);
+            entity.Property(e => e.ComuneNascita).HasMaxLength(200);
+            entity.Property(e => e.ContrattoFl)
+                .HasMaxLength(200)
+                .HasColumnName("ContrattoFL");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.DataFineRapporto).HasMaxLength(200);
+            entity.Property(e => e.DataUltimoImpiego).HasMaxLength(200);
+            entity.Property(e => e.DelmeCodiceDitta)
+                .HasMaxLength(200)
+                .HasColumnName("DELME_CodiceDitta");
+            entity.Property(e => e.DelmeTelefono)
+                .HasMaxLength(200)
+                .HasColumnName("DELME_Telefono");
+            entity.Property(e => e.DescriContratto).HasMaxLength(200);
+            entity.Property(e => e.DescriLivello).HasMaxLength(200);
+            entity.Property(e => e.DescriQualifica).HasMaxLength(200);
+            entity.Property(e => e.DescriTipoContratto).HasMaxLength(200);
+            entity.Property(e => e.DescriTipoOrarioLavoro).HasMaxLength(200);
+            entity.Property(e => e.DescriTipoRetribuzione).HasMaxLength(200);
+            entity.Property(e => e.DescriTitoloStudio).HasMaxLength(200);
+            entity.Property(e => e.Email).HasMaxLength(256);
+            entity.Property(e => e.FirstName).HasMaxLength(200);
+            entity.Property(e => e.IButtonCode)
+                .HasMaxLength(100)
+                .HasColumnName("iButtonCode");
+            entity.Property(e => e.Iban)
+                .HasMaxLength(200)
+                .HasColumnName("IBAN");
+            entity.Property(e => e.Idcompany).HasColumnName("IDCompany");
+            entity.Property(e => e.IdcreatoDa).HasColumnName("IDCreatoDa");
+            entity.Property(e => e.IdeliminatoDa).HasColumnName("IDEliminatoDa");
+            entity.Property(e => e.IdmodificatoDa).HasColumnName("IDModificatoDa");
+            entity.Property(e => e.Indirizzo).HasMaxLength(200);
+            entity.Property(e => e.InternalCode).HasMaxLength(50);
+            entity.Property(e => e.IsDemo).HasColumnName("isDemo");
+            entity.Property(e => e.IsEmployee).HasColumnName("isEmployee");
+            entity.Property(e => e.IsEnabledSupplierBonifico).HasColumnName("isEnabledSupplierBonifico");
+            entity.Property(e => e.IsEnabledSupplierOrderConfirm).HasColumnName("isEnabledSupplierOrderConfirm");
+            entity.Property(e => e.IsExternal).HasColumnName("isExternal");
+            entity.Property(e => e.IsOperatoreLooc).HasColumnName("isOperatoreLOOC");
+            entity.Property(e => e.IsParking).HasColumnName("isParking");
+            entity.Property(e => e.IsSuperAdmin).HasColumnName("isSuperAdmin");
+            entity.Property(e => e.LastName).HasMaxLength(200);
+            entity.Property(e => e.LoocPassword)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.LoocUsername)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.Matricola).HasMaxLength(200);
+            entity.Property(e => e.MaxCostSupplierOrderConfirm).HasColumnName("maxCostSupplierOrderConfirm");
+            entity.Property(e => e.ModificatoDaId).HasMaxLength(450);
+            entity.Property(e => e.Nazione).HasMaxLength(200);
+            entity.Property(e => e.NfcCode).HasMaxLength(200);
+            entity.Property(e => e.NormalizedEmail).HasMaxLength(256);
+            entity.Property(e => e.NormalizedUserName).HasMaxLength(256);
+            entity.Property(e => e.Note).HasMaxLength(2000);
+            entity.Property(e => e.NumContratto).HasMaxLength(200);
+            entity.Property(e => e.NumeroPatente).HasMaxLength(200);
+            entity.Property(e => e.OreMedieSettimana).HasMaxLength(200);
+            entity.Property(e => e.PartTime).HasMaxLength(200);
+            entity.Property(e => e.PhoneNumber).HasMaxLength(50);
+            entity.Property(e => e.PrNascita).HasMaxLength(200);
+            entity.Property(e => e.PrimaAssunzione).HasMaxLength(200);
+            entity.Property(e => e.PrivateNumber).HasMaxLength(50);
+            entity.Property(e => e.Provincia).HasMaxLength(200);
+            entity.Property(e => e.QualificaImpiegato).HasMaxLength(200);
+            entity.Property(e => e.QualificheSoggetto).HasMaxLength(200);
+            entity.Property(e => e.Ral).HasColumnName("RAL");
+            entity.Property(e => e.ReceiveEmail).HasColumnName("receiveEmail");
+            entity.Property(e => e.ReceiveOtpiride).HasColumnName("receiveOTPIride");
+            entity.Property(e => e.ReceiveSms).HasColumnName("receiveSms");
+            entity.Property(e => e.Regione).HasMaxLength(200);
+            entity.Property(e => e.Rinnovo).HasMaxLength(200);
+            entity.Property(e => e.ScadenzaDocumento).HasMaxLength(200);
+            entity.Property(e => e.ScadenzaFl)
+                .HasMaxLength(200)
+                .HasColumnName("ScadenzaFL");
+            entity.Property(e => e.ScadenzaRinnovo).HasMaxLength(200);
+            entity.Property(e => e.ScadenzaTempoDeterminato).HasMaxLength(200);
+            entity.Property(e => e.SpecializzazioniSoggetto).HasMaxLength(200);
+            entity.Property(e => e.StatoAccount)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+            entity.Property(e => e.StimaOraria).HasColumnType("decimal(18, 0)");
+            entity.Property(e => e.StimaOrariaGalleria).HasColumnType("decimal(18, 0)");
+            entity.Property(e => e.StimaOrariaNotturna).HasColumnType("decimal(18, 0)");
+            entity.Property(e => e.StimaOrariaStraordinaria).HasColumnType("decimal(18, 0)");
+            entity.Property(e => e.TipoPatente).HasMaxLength(200);
+            entity.Property(e => e.UserName).HasMaxLength(256);
         });
 
         OnModelCreatingPartial(modelBuilder);

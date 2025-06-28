@@ -38,11 +38,10 @@ namespace MediaLabAPI.Controllers
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest request)
         {
-            // Verifica che i parametri siano presenti
             if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
                 return BadRequest("Username e Password sono obbligatori");
 
-            // Cerca l'utente nel db nel DB
+            // Cerca l'utente nel db
             var user = _db.SysUsers.FirstOrDefault(a =>
                 a.Username == request.Username &&
                 a.IsEnabled == true);
@@ -60,7 +59,10 @@ namespace MediaLabAPI.Controllers
 
             // Aggiorna data ultimo accesso
             user.LastLogin = DateTime.UtcNow;
-            _db.SaveChanges();          
+            _db.SaveChanges();
+
+            // Recupera il nome dell'azienda (C_ANA_Companies) tramite IdCompany
+            var company = _db.C_ANA_Companies.FirstOrDefault(c => c.Id == user.IdCompany);
 
             // Genera il token
             var jwt = GenerateJwtToken(request.Username, "Admin");
@@ -71,7 +73,8 @@ namespace MediaLabAPI.Controllers
                 fullName = user.Username,
                 email = user.Email,
                 id = user.Id,
-                idCompany = user.IdCompany
+                idCompany = user.IdCompany,
+                companyName = company?.RagioneSociale ?? "Azienda sconosciuta"
             });
         }
 

@@ -184,4 +184,16 @@ public partial class C_ANA_Company
     public bool? AccettazioneTermini { get; set; }
 
     public Guid? IdPosCC { get; set; }
+
+    public bool? isTenant { get; set; }
+
+    public bool? isAffiliate { get; set; }
+
+    public string? AffiliateCode { get; set; }
+
+    public DateTime? AffiliatedDataStart { get; set; }
+
+    public DateTime? AffiliatedDataEnd { get; set; }
+
+    public int? AffiliateStatus { get; set; }
 }

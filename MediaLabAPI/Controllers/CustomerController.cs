@@ -19,21 +19,43 @@ namespace MediaLabAPI.Controllers
         }
 
         // 🔹 GET: api/customer
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<C_ANA_Company>>> GetAll()
-        {
-            try
-            {
-                var companies = await _context.C_ANA_Companies
-                    .Where(c => c.IsDeleted == false || c.IsDeleted == null)
-                    .ToListAsync();
+       [HttpGet]
+public async Task<ActionResult<IEnumerable<C_ANA_Company>>> GetAll([FromQuery] Guid multitenantId)
+{
+    if (multitenantId == Guid.Empty)
+        return BadRequest("Il parametro multitenantId è obbligatorio.");
 
-                return Ok(companies);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Errore interno: {ex.Message}");
-            }
+    try
+    {
+        var companies = await _context.C_ANA_Companies
+            .Where(c =>
+                (c.IsDeleted == false || c.IsDeleted == null) &&
+                c.MultiTenantId == multitenantId)
+            .ToListAsync();
+
+        return Ok(companies);
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, $"Errore interno: {ex.Message}");
+    }
+}
+
+        // 🔹 GET: api/customer
+        [HttpGet("customeraffiliated")]
+        public async Task<IActionResult> GetAffiliatedCustomers([FromQuery] Guid multitenantId)
+        {
+            if (multitenantId == Guid.Empty)
+                return BadRequest("MultiTenantId obbligatorio.");
+
+            var results = await _context.C_ANA_Companies
+                .Where(c =>
+                    (c.IsDeleted == false || c.IsDeleted == null) &&
+                    c.MultiTenantId == multitenantId &&
+                    c.isAffiliate == true)
+                .ToListAsync();
+
+            return Ok(results);
         }
 
         // 🔹 GET: api/customer/{id}
@@ -101,7 +123,7 @@ namespace MediaLabAPI.Controllers
                     .FirstOrDefaultAsync();
 
                 if (existingCustomer == null)
-                    return NotFound($"Cliente con ID {id} non trovato");                
+                    return NotFound($"Cliente con ID {id} non trovato");
 
                 // 🔹 AGGIORNA SOLO I CAMPI MODIFICABILI
                 existingCustomer.RagioneSociale = updatedCustomer.RagioneSociale;
@@ -160,11 +182,13 @@ namespace MediaLabAPI.Controllers
             {
                 return StatusCode(500, $"Errore durante la cancellazione: {ex.Message}");
             }
-        }
+        }       
 
-        // 🔹 SEARCH: Ricerca utente con parametri
         [HttpGet("search")]
-        public async Task<IActionResult> Search([FromQuery] string query, [FromQuery] Guid? multitenantId)
+        public async Task<IActionResult> Search(
+         [FromQuery] string query,
+         [FromQuery] Guid? multitenantId,
+         [FromQuery] bool? isAffiliate)
         {
             if (string.IsNullOrWhiteSpace(query))
                 return BadRequest("Il parametro di ricerca è obbligatorio.");
@@ -172,7 +196,8 @@ namespace MediaLabAPI.Controllers
             var results = await _context.C_ANA_Companies
                 .Where(c =>
                     (c.IsDeleted == false || c.IsDeleted == null) &&
-                    (!multitenantId.HasValue || c.MultiTenantId == multitenantId.Value) && // filtro per tenant
+                    (!multitenantId.HasValue || c.MultiTenantId == multitenantId.Value) &&
+                    (!isAffiliate.HasValue || c.isAffiliate == isAffiliate.Value) && // ✔️ condizione opzionale
                     (
                         c.RagioneSociale.Contains(query) ||
                         c.PIva.Contains(query) ||
