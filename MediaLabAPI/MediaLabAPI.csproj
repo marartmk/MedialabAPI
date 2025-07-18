@@ -21,6 +21,8 @@
 
   <ItemGroup>
     <Folder Include="Data\" />
+    <Folder Include="TempData\" />
+    <Folder Include="TempModels\" />
   </ItemGroup>
 
 </Project>

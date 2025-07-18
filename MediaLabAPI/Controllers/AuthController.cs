@@ -213,6 +213,50 @@ namespace MediaLabAPI.Controllers
             });
         }
 
+        // 🔐 LOGIN USER
+        [HttpPost("login-user")]
+        public IActionResult LoginUser([FromBody] LoginRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+                return BadRequest("Username e Password sono obbligatori");
+
+            // Cerca l'utente nel db
+            var user = _db.SysUsers.FirstOrDefault(a =>
+                a.Username == request.Username &&
+                a.IsEnabled == true);
+
+            if (user == null)
+                return Unauthorized("Utente amministratore non trovato o disabilitato");
+
+            // Verifica la password hashata
+            var inputPasswordHash = Convert.ToBase64String(
+                System.Security.Cryptography.SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(request.Password))
+            );
+
+            if (user.PasswordHash != inputPasswordHash)
+                return Unauthorized("Password errata");
+
+            // Aggiorna data ultimo accesso
+            user.LastLogin = DateTime.UtcNow;
+            _db.SaveChanges();
+
+            // Recupera il nome dell'azienda (C_ANA_Companies) tramite IdCompany
+            var company = _db.C_ANA_Companies.FirstOrDefault(c => c.Id == user.IdCompany);
+
+            // Genera il token
+            var jwt = GenerateJwtToken(request.Username, "Admin");
+
+            return Ok(new
+            {
+                token = jwt,
+                fullName = user.Username,
+                email = user.Email,
+                id = user.Id,
+                idCompany = user.IdCompany,
+                companyName = company?.RagioneSociale ?? "Azienda sconosciuta"
+            });
+        }
+
     }
 }
 

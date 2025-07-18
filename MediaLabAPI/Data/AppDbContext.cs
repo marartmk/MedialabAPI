@@ -20,6 +20,7 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<SysAdmin> SysAdmins { get; set; }
     public virtual DbSet<SysUser> SysUsers { get; set; }
     public virtual DbSet<C_ANA_Operators> C_ANA_Operators { get; set; }
+    public virtual DbSet<DeviceRegistry> DeviceRegistry { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -338,6 +339,72 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.UserName).HasMaxLength(256);
         });
 
+        modelBuilder.Entity<DeviceRegistry>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK__DeviceRe__3214EC07DF53FF07");
+            entity.ToTable("DeviceRegistry");
+
+            // Indici
+            entity.HasIndex(e => e.CompanyId, "IX_DeviceRegistry_CompanyId");
+            entity.HasIndex(e => e.CustomerId, "IX_DeviceRegistry_CustomerId");
+            entity.HasIndex(e => e.DeviceId, "IX_DeviceRegistry_DeviceId");
+            entity.HasIndex(e => e.DeviceType, "IX_DeviceRegistry_DeviceType");
+            entity.HasIndex(e => e.IsDeleted, "IX_DeviceRegistry_IsDeleted");
+            entity.HasIndex(e => e.MultitenantId, "IX_DeviceRegistry_MultitenantId");
+            entity.HasIndex(e => e.SerialNumber, "IX_DeviceRegistry_SerialNumber");
+
+            // Configurazione proprietà
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd(); // Auto-increment
+
+            entity.Property(e => e.DeviceId)
+                .IsRequired(); // Guid obbligatorio
+
+            entity.Property(e => e.CustomerId)
+                .IsRequired(false); // Nullable Guid
+
+            entity.Property(e => e.CompanyId)
+                .IsRequired(false); // Nullable Guid
+
+            entity.Property(e => e.MultitenantId)
+                .IsRequired(false); // Nullable Guid
+
+            entity.Property(e => e.SerialNumber)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Brand)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Model)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.DeviceType)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.PurchaseDate)
+                .IsRequired(false); // Nullable DateOnly
+
+            entity.Property(e => e.ReceiptNumber)
+                .HasMaxLength(100)
+                .IsRequired(false); // ✅ Nullable string
+
+            entity.Property(e => e.Retailer)
+                .HasMaxLength(200)
+                .IsRequired(false); // ✅ Nullable string
+
+            entity.Property(e => e.Notes)
+                .IsRequired(false); // ✅ Nullable string, NVARCHAR(MAX)
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())");
+
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValue(false);
+        });
         OnModelCreatingPartial(modelBuilder);
 
     }
