@@ -148,6 +148,46 @@ namespace MediaLabAPI.Controllers
                 return StatusCode(500, new { message = "Errore interno del server" });
             }
         }
+
+        /// <summary>
+        /// Aggiorna i dati della riparazione usando RepairId (Guid)
+        /// </summary>
+        [HttpPut("{id:guid}")]
+        public async Task<IActionResult> UpdateRepair(Guid id, [FromBody] UpdateRepairRequestDto request)
+        {
+            try
+            {
+                await _repairService.UpdateRepairAsync(id, request);
+                return Ok(new { message = "Scheda riparazione aggiornata con successo" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Errore durante aggiornamento repair {RepairId}", id);
+                return StatusCode(500, new { message = "Errore interno del server" });
+            }
+        }
+
+        /// <summary>
+        /// Ottiene i dati delle riparazioni per una lista liht
+        /// </summary>
+        [HttpPost("search/light")]
+        public async Task<ActionResult<IEnumerable<RepairDetailDto>>> SearchRepairsLight([FromBody] RepairSearchRequestDto searchRequest)
+        {
+            try
+            {
+                var repairs = await _repairService.GetRepairsLightAsync(searchRequest);
+                return Ok(repairs);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching light repairs");
+                return StatusCode(500, new { message = "Errore interno del server" });
+            }
+        }
     }
 
     // DTO per aggiornamento stato
