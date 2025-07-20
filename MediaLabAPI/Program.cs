@@ -4,6 +4,7 @@ using System.Text;
 using MediaLabAPI.Configurations;
 using Microsoft.EntityFrameworkCore;
 using MediaLabAPI.Data;
+using MediaLabAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,6 +50,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddScoped<IRepairService, RepairService>();
 
 var app = builder.Build();
 
