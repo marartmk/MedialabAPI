@@ -818,7 +818,8 @@ namespace MediaLabAPI.Services
                         )) ||
                         (r.Device != null && (
                             (r.Device.Brand != null && r.Device.Brand.ToLower().Contains(searchTerm)) ||
-                            (r.Device.Model != null && r.Device.Model.ToLower().Contains(searchTerm))
+                            (r.Device.Model != null && r.Device.Model.ToLower().Contains(searchTerm)) ||
+                            (r.Device.SerialNumber != null && r.Device.SerialNumber.ToLower().Contains(searchTerm))
                         ))
                     );
                 }
