@@ -35,7 +35,7 @@ public partial class C_ANA_Company
 
     public string? Indirizzo { get; set; }
 
-    public string? EmailAziendale { get; set; }
+    public string? Email { get; set; }
 
     public string? SitoWeb { get; set; }
 

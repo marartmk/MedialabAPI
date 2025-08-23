@@ -92,6 +92,7 @@ public async Task<ActionResult<IEnumerable<C_ANA_Company>>> GetAll([FromQuery] G
                 customer.Id = Guid.NewGuid();
                 customer.CreatedAt = DateTime.UtcNow;
                 customer.IsDeleted = false;
+                customer.isTenant = false;
 
                 // 🔹 VALORI DEFAULT PER CAMPI NON NULLABLE
                 customer.EnabledFE = customer.EnabledFE; // Mantieni il valore passato
@@ -131,7 +132,7 @@ public async Task<ActionResult<IEnumerable<C_ANA_Company>>> GetAll([FromQuery] G
                 existingCustomer.Nome = updatedCustomer.Nome;
                 existingCustomer.PIva = updatedCustomer.PIva;
                 existingCustomer.FiscalCode = updatedCustomer.FiscalCode;
-                existingCustomer.EmailAziendale = updatedCustomer.EmailAziendale;
+                existingCustomer.Email = updatedCustomer.Email;
                 existingCustomer.Telefono = updatedCustomer.Telefono;
                 existingCustomer.isCustomer = updatedCustomer.isCustomer;
                 existingCustomer.UpdatedAt = DateTime.UtcNow;
@@ -142,7 +143,7 @@ public async Task<ActionResult<IEnumerable<C_ANA_Company>>> GetAll([FromQuery] G
                 existingCustomer.Provincia = updatedCustomer.Provincia;
                 existingCustomer.Citta = updatedCustomer.Citta;
                 existingCustomer.Telefono = updatedCustomer.Telefono;
-                existingCustomer.EmailAziendale = updatedCustomer.EmailAziendale;
+                existingCustomer.Email = updatedCustomer.Email;
                 existingCustomer.FiscalCode = updatedCustomer.FiscalCode;
                 existingCustomer.PIva = updatedCustomer.PIva;
                 existingCustomer.EmailPec = updatedCustomer.EmailPec;

@@ -91,7 +91,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.CreatedBy).HasMaxLength(200);
             entity.Property(e => e.DatevCode).HasMaxLength(100);
             entity.Property(e => e.DeletedBy).HasMaxLength(200);
-            entity.Property(e => e.EmailAziendale).HasMaxLength(50);
+            entity.Property(e => e.Email).HasMaxLength(50);
             entity.Property(e => e.EmailPec).HasMaxLength(50);
             entity.Property(e => e.Fax).HasMaxLength(50);
             entity.Property(e => e.FiscalCode).HasMaxLength(20);

@@ -522,7 +522,7 @@ namespace MediaLabAPI.Services
                 Provincia = customerData.Provincia,
                 Citta = customerData.Citta,
                 Telefono = customerData.Telefono,
-                EmailAziendale = customerData.Email,
+                Email = customerData.Email,
                 FiscalCode = customerData.CodiceFiscale,
                 PIva = customerData.PartitaIva,
                 EmailPec = customerData.EmailPec,
