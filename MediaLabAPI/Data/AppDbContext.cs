@@ -22,12 +22,9 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<SysUser> SysUsers { get; set; }
     public virtual DbSet<C_ANA_Operators> C_ANA_Operators { get; set; }
     public virtual DbSet<DeviceRegistry> DeviceRegistry { get; set; }
-
-    // 🆕 Nuovo DbSet per le riparazioni
-    public virtual DbSet<DeviceRepair> DeviceRepairs { get; set; }
-
-    // 🔧 MANCAVA: DbSet per i test di ingresso
+    public virtual DbSet<DeviceRepair> DeviceRepairs { get; set; }     
     public virtual DbSet<IncomingTest> IncomingTests { get; set; }
+    public virtual DbSet<ExitTest> ExitTests { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -276,7 +273,7 @@ public partial class AppDbContext : DbContext
             entity.HasIndex(e => e.SerialNumber, "IX_DeviceRegistry_SerialNumber");
         });
 
-        // 🆕 CONFIGURAZIONE DeviceRepair (CORRETTA)
+        // 🆕 CONFIGURAZIONE DeviceRepair
         modelBuilder.Entity<DeviceRepair>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -404,7 +401,7 @@ public partial class AppDbContext : DbContext
                 .HasDatabaseName("IX_DeviceRepairs_MultitenantId");
         });
 
-        // 🆕 CONFIGURAZIONE IncomingTest (NUOVA)
+        // 🆕 CONFIGURAZIONE IncomingTest
         modelBuilder.Entity<IncomingTest>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -491,6 +488,59 @@ public partial class AppDbContext : DbContext
             entity.HasIndex(e => e.MultitenantId)
                 .HasDatabaseName("IX_IncomingTests_MultitenantId");
         });
+
+        // 🆕 CONFIGURAZIONE ExitTest
+        modelBuilder.Entity<ExitTest>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("ExitTests");
+
+            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            entity.Property(e => e.CompanyId).HasColumnName("company_id").IsRequired();
+            entity.Property(e => e.MultitenantId).HasColumnName("multitenant_id").IsRequired();
+            entity.Property(e => e.RepairId).HasColumnName("repair_id");
+
+            entity.Property(e => e.VetroRotto).HasColumnName("vetro_rotto");
+            entity.Property(e => e.Touchscreen).HasColumnName("touchscreen");
+            entity.Property(e => e.Lcd).HasColumnName("lcd");
+            entity.Property(e => e.FrameScollato).HasColumnName("frame_scollato");
+            entity.Property(e => e.Batteria).HasColumnName("batteria");
+            entity.Property(e => e.DockDiRicarica).HasColumnName("dock_di_ricarica");
+            entity.Property(e => e.BackCover).HasColumnName("back_cover");
+            entity.Property(e => e.Telaio).HasColumnName("telaio");
+            entity.Property(e => e.TastiVolumeMuto).HasColumnName("tasti_volume_muto");
+            entity.Property(e => e.TastoStandbyPower).HasColumnName("tasto_standby_power");
+            entity.Property(e => e.SensoreDiProssimita).HasColumnName("sensore_di_prossimita");
+            entity.Property(e => e.MicrofonoChiamate).HasColumnName("microfono_chiamate");
+            entity.Property(e => e.MicrofonoAmbientale).HasColumnName("microfono_ambientale");
+            entity.Property(e => e.AltoparlanteChiamata).HasColumnName("altoparlante_chiamata");
+            entity.Property(e => e.SpeakerBuzzer).HasColumnName("speaker_buzzer");
+            entity.Property(e => e.VetroFotocameraPosteriore).HasColumnName("vetro_fotocamera_posteriore");
+            entity.Property(e => e.FotocameraPosteriore).HasColumnName("fotocamera_posteriore");
+            entity.Property(e => e.FotocameraAnteriore).HasColumnName("fotocamera_anteriore");
+            entity.Property(e => e.TastoHome).HasColumnName("tasto_home");
+            entity.Property(e => e.TouchId).HasColumnName("touch_id");
+            entity.Property(e => e.FaceId).HasColumnName("face_id");
+            entity.Property(e => e.WiFi).HasColumnName("wi_fi");
+            entity.Property(e => e.Rete).HasColumnName("rete");
+            entity.Property(e => e.Chiamata).HasColumnName("chiamata");
+            entity.Property(e => e.SchedaMadre).HasColumnName("scheda_madre");
+            entity.Property(e => e.VetroPosteriore).HasColumnName("vetro_posteriore");
+
+            entity.Property(e => e.CreatedData).HasColumnName("created_data").HasColumnType("datetime");
+            entity.Property(e => e.ModifiedData).HasColumnName("modified_data").HasColumnType("datetime");
+            entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
+
+            // relazione via RepairId (GUID) con DeviceRepair.RepairId
+            entity.HasOne(e => e.DeviceRepair)
+                  .WithOne()
+                  .HasForeignKey<ExitTest>(e => e.RepairId)
+                  .HasPrincipalKey<DeviceRepair>(r => r.RepairId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(e => e.RepairId).HasDatabaseName("IX_ExitTests_RepairId");
+        });
+
 
         OnModelCreatingPartial(modelBuilder);
     }

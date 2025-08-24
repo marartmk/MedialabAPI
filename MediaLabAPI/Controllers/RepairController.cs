@@ -53,18 +53,13 @@ namespace MediaLabAPI.Controllers
         /// Ottiene una riparazione per ID
         /// </summary>
         [HttpGet("{id}")]
-        public async Task<ActionResult<DeviceRepair>> GetRepair(int id)
+        public async Task<ActionResult<RepairDetailDto>> GetRepair(int id)
         {
             try
             {
-                var repair = await _repairService.GetRepairByIdAsync(id);
-
-                if (repair == null)
-                {
-                    return NotFound(new { message = "Riparazione non trovata" });
-                }
-
-                return Ok(repair);
+                var dto = await _repairService.GetRepairDetailByIdAsync(id);
+                if (dto == null) return NotFound(new { message = "Riparazione non trovata" });
+                return Ok(dto);
             }
             catch (Exception ex)
             {

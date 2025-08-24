@@ -904,5 +904,302 @@ namespace MediaLabAPI.Services
             }
         }
 
+        public async Task<RepairDetailDto?> GetRepairDetailByIdAsync(int id)
+        {
+            return await _context.DeviceRepairs
+                .AsNoTracking()
+                .Where(r => r.Id == id && !r.IsDeleted)
+                .Select(r => new RepairDetailDto
+                {
+                    Id = r.Id,
+                    RepairId = r.RepairId,
+                    RepairCode = r.RepairCode ?? string.Empty,
+
+                    FaultDeclared = r.FaultDeclared,
+                    RepairAction = r.RepairAction,
+                    RepairStatus = r.RepairStatus,
+                    RepairStatusCode = r.RepairStatusCode,
+                    TechnicianCode = r.TechnicianCode,
+                    TechnicianName = r.TechnicianName,
+                    Notes = r.Notes,
+
+                    CreatedAt = r.CreatedAt,
+                    UpdatedAt = r.UpdatedAt,
+                    ReceivedAt = r.ReceivedAt,
+                    StartedAt = r.StartedAt,
+                    CompletedAt = r.CompletedAt,
+                    DeliveredAt = r.DeliveredAt,
+
+                    // ---- Customer ----
+                    Customer = r.Customer == null
+                        ? new CustomerDetailDto { Id = Guid.Empty, Name = "Cliente non trovato" }
+                        : new CustomerDetailDto
+                        {
+                            Id = r.Customer.Id,
+                            Name = !string.IsNullOrWhiteSpace(r.Customer.RagioneSociale)
+                                     ? r.Customer.RagioneSociale
+                                     : $"{r.Customer.Cognome} {r.Customer.Nome}".Trim(),
+                            Phone = r.Customer.Telefono,
+                            Email = r.Customer.Email,
+                            Address = r.Customer.Indirizzo,
+                            City = r.Customer.Citta,
+                            Province = r.Customer.Provincia,
+                            PostalCode = r.Customer.Cap,        // <- Cap (non CAP)
+                            Region = r.Customer.Regione,
+                            FiscalCode = r.Customer.FiscalCode, // <- FiscalCode (non CodiceFiscale)
+                            VatNumber = r.Customer.PIva,        // <- PIva (non PIVA)
+                            CustomerType = r.Customer.Tipologia == "1" ? "Privato" : "Azienda"
+                        },
+
+                    // ---- Device ----
+                    Device = new DeviceDetailDto
+                    {
+                        DeviceId = r.DeviceId,
+                        Brand = r.Device != null ? r.Device.Brand : string.Empty,
+                        Model = r.Device != null ? r.Device.Model : string.Empty,
+                        SerialNumber = r.Device != null ? r.Device.SerialNumber : null,
+                        DeviceType = r.Device != null ? r.Device.DeviceType : null,
+                        Color = null, // DeviceRegistry non ha 'Color'
+                        PurchaseDate = (r.Device != null && r.Device.PurchaseDate.HasValue)
+                            ? r.Device.PurchaseDate.Value.ToDateTime(TimeOnly.MinValue) // DateOnly? -> DateTime?
+                            : (DateTime?)null,
+                        ReceiptNumber = r.Device != null ? r.Device.ReceiptNumber : null,
+                        Retailer = r.Device != null ? r.Device.Retailer : null,
+                        Notes = r.Device != null ? r.Device.Notes : null,
+                        CreatedAt = r.Device != null ? r.Device.CreatedAt : r.CreatedAt
+                    },
+
+                    // ---- Diagnostic ----
+                    HasDiagnostic = r.IncomingTest != null,
+                    DiagnosticSummary = r.IncomingTest != null ? "Diagnostica presente" : null,
+                    DiagnosticDetails = null // compila se/quando ti servono campi specifici
+                })
+                .FirstOrDefaultAsync();
+        }
+
+        // ===================== DIAGNOSTICA: INCOMING =====================
+        public async Task<IncomingTestDto?> GetIncomingAsync(Guid repairId)
+        {
+            var e = await _context.IncomingTests.AsNoTracking()
+                     .FirstOrDefaultAsync(x => x.RepairId == repairId && x.IsDeleted == false);
+            return e is null ? null : new IncomingTestDto
+            {
+                Id = e.Id,
+                RepairId = e.RepairId,
+                CompanyId = e.CompanyId,
+                MultitenantId = e.MultitenantId,
+
+                // gruppi FE
+                Battery = e.Batteria,
+                WiFi = e.WiFi,
+                FaceId = e.FaceId,
+                Scanner = e.TouchId,
+                Sensors = e.SensoreDiProssimita,
+                System = e.SchedaMadre,
+                Cellular = e.Rete,
+                RfCellular = e.Rete,
+                Camera = (e.FotocameraPosteriore == true || e.FotocameraAnteriore == true),
+
+                // campi DB diretti
+                TelefonoSpento = e.TelefonoSpento,
+                VetroRotto = e.VetroRotto,
+                Touchscreen = e.Touchscreen,
+                Lcd = e.Lcd,
+                FrameScollato = e.FrameScollato,
+                DockDiRicarica = e.DockDiRicarica,
+                BackCover = e.BackCover,
+                Telaio = e.Telaio,
+                TastiVolumeMuto = e.TastiVolumeMuto,
+                TastoStandbyPower = e.TastoStandbyPower,
+                MicrofonoChiamate = e.MicrofonoChiamate,
+                MicrofonoAmbientale = e.MicrofonoAmbientale,
+                AltoparlantteChiamata = e.AltoparlantteChiamata,
+                SpeakerBuzzer = e.SpeakerBuzzer,
+                VetroFotocameraPosteriore = e.VetroFotocameraPosteriore,
+                TastoHome = e.TastoHome,
+                TouchId = e.TouchId,
+                Chiamata = e.Chiamata,
+                VetroPosteriore = e.VetroPosteriore
+            };
+        }
+
+        public async Task UpsertIncomingAsync(Guid repairId, IncomingTestDto dto)
+        {
+            var rep = await _context.DeviceRepairs.AsNoTracking()
+                        .FirstOrDefaultAsync(r => r.RepairId == repairId && !r.IsDeleted);
+            if (rep == null) throw new ArgumentException("Repair not found");
+
+            var d = await _context.IncomingTests
+                        .FirstOrDefaultAsync(x => x.RepairId == repairId && x.IsDeleted == false);
+
+            if (d == null)
+            {
+                d = new IncomingTest
+                {
+                    RepairId = repairId,
+                    CompanyId = rep.CompanyId,
+                    MultitenantId = rep.MultitenantId,
+                    CreatedData = DateTime.Now,
+                    IsDeleted = false
+                };
+                _context.IncomingTests.Add(d);
+            }
+
+            // FE → entity
+            d.Batteria = dto.Battery;
+            d.WiFi = dto.WiFi;
+            d.FaceId = dto.FaceId;
+            d.TouchId = dto.TouchId ?? dto.Scanner;
+            d.SensoreDiProssimita = dto.Sensors;
+            d.SchedaMadre = dto.System;
+            d.Rete = dto.Cellular ?? dto.RfCellular;
+            if (dto.Camera.HasValue)
+            {
+                d.FotocameraPosteriore = dto.Camera;
+                d.FotocameraAnteriore = dto.Camera;
+            }
+
+            d.TelefonoSpento = dto.TelefonoSpento;
+            d.VetroRotto = dto.VetroRotto;
+            d.Touchscreen = dto.Touchscreen;
+            d.Lcd = dto.Lcd;
+            d.FrameScollato = dto.FrameScollato;
+            d.DockDiRicarica = dto.DockDiRicarica;
+            d.BackCover = dto.BackCover;
+            d.Telaio = dto.Telaio;
+            d.TastiVolumeMuto = dto.TastiVolumeMuto;
+            d.TastoStandbyPower = dto.TastoStandbyPower;
+            d.MicrofonoChiamate = dto.MicrofonoChiamate;
+            d.MicrofonoAmbientale = dto.MicrofonoAmbientale;
+            d.AltoparlantteChiamata = dto.AltoparlantteChiamata;
+            d.SpeakerBuzzer = dto.SpeakerBuzzer;
+            d.VetroFotocameraPosteriore = dto.VetroFotocameraPosteriore;
+            d.TastoHome = dto.TastoHome;
+            d.Chiamata = dto.Chiamata;
+            d.VetroPosteriore = dto.VetroPosteriore;
+
+            d.ModifiedData = DateTime.Now;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteIncomingAsync(Guid repairId)
+        {
+            var e = await _context.IncomingTests
+                        .FirstOrDefaultAsync(x => x.RepairId == repairId && x.IsDeleted == false);
+            if (e == null) return;
+            e.IsDeleted = true;
+            e.ModifiedData = DateTime.Now;
+            await _context.SaveChangesAsync();
+        }
+
+
+        // ===================== DIAGNOSTICA: EXIT =====================
+        public async Task<ExitTestDto?> GetExitAsync(Guid repairId)
+        {
+            var e = await _context.ExitTests.AsNoTracking()
+                     .FirstOrDefaultAsync(x => x.RepairId == repairId && (x.IsDeleted == false || x.IsDeleted == null));
+            return e is null ? null : new ExitTestDto
+            {
+                Id = e.Id,
+                RepairId = e.RepairId,
+                CompanyId = e.CompanyId,
+                MultitenantId = e.MultitenantId,
+
+                VetroRotto = e.VetroRotto,
+                Touchscreen = e.Touchscreen,
+                Lcd = e.Lcd,
+                FrameScollato = e.FrameScollato,
+                Batteria = e.Batteria,
+                DockDiRicarica = e.DockDiRicarica,
+                BackCover = e.BackCover,
+                Telaio = e.Telaio,
+                TastiVolumeMuto = e.TastiVolumeMuto,
+                TastoStandbyPower = e.TastoStandbyPower,
+                SensoreDiProssimita = e.SensoreDiProssimita,
+                MicrofonoChiamate = e.MicrofonoChiamate,
+                MicrofonoAmbientale = e.MicrofonoAmbientale,
+                AltoparlanteChiamata = e.AltoparlanteChiamata,
+                SpeakerBuzzer = e.SpeakerBuzzer,
+                VetroFotocameraPosteriore = e.VetroFotocameraPosteriore,
+                FotocameraPosteriore = e.FotocameraPosteriore,
+                FotocameraAnteriore = e.FotocameraAnteriore,
+                TastoHome = e.TastoHome,
+                TouchId = e.TouchId,
+                FaceId = e.FaceId,
+                WiFi = e.WiFi,
+                Rete = e.Rete,
+                Chiamata = e.Chiamata,
+                SchedaMadre = e.SchedaMadre,
+                VetroPosteriore = e.VetroPosteriore
+            };
+        }
+
+        public async Task UpsertExitAsync(Guid repairId, ExitTestDto dto)
+        {
+            var rep = await _context.DeviceRepairs.AsNoTracking()
+                        .FirstOrDefaultAsync(r => r.RepairId == repairId && !r.IsDeleted);
+            if (rep == null) throw new ArgumentException("Repair not found");
+
+            var d = await _context.ExitTests
+                        .FirstOrDefaultAsync(x => x.RepairId == repairId && (x.IsDeleted == false || x.IsDeleted == null));
+
+            if (d == null)
+            {
+                d = new ExitTest
+                {
+                    RepairId = repairId,
+                    CompanyId = rep.CompanyId,
+                    MultitenantId = rep.MultitenantId,
+                    CreatedData = DateTime.Now,
+                    IsDeleted = false
+                };
+                _context.ExitTests.Add(d);
+            }
+
+            d.VetroRotto = dto.VetroRotto;
+            d.Touchscreen = dto.Touchscreen;
+            d.Lcd = dto.Lcd;
+            d.FrameScollato = dto.FrameScollato;
+            d.Batteria = dto.Batteria;
+            d.DockDiRicarica = dto.DockDiRicarica;
+            d.BackCover = dto.BackCover;
+            d.Telaio = dto.Telaio;
+            d.TastiVolumeMuto = dto.TastiVolumeMuto;
+            d.TastoStandbyPower = dto.TastoStandbyPower;
+            d.SensoreDiProssimita = dto.SensoreDiProssimita;
+            d.MicrofonoChiamate = dto.MicrofonoChiamate;
+            d.MicrofonoAmbientale = dto.MicrofonoAmbientale;
+            d.AltoparlanteChiamata = dto.AltoparlanteChiamata;
+            d.SpeakerBuzzer = dto.SpeakerBuzzer;
+            d.VetroFotocameraPosteriore = dto.VetroFotocameraPosteriore;
+            d.FotocameraPosteriore = dto.FotocameraPosteriore;
+            d.FotocameraAnteriore = dto.FotocameraAnteriore;
+            d.TastoHome = dto.TastoHome;
+            d.TouchId = dto.TouchId;
+            d.FaceId = dto.FaceId;
+            d.WiFi = dto.WiFi;
+            d.Rete = dto.Rete;
+            d.Chiamata = dto.Chiamata;
+            d.SchedaMadre = dto.SchedaMadre;
+            d.VetroPosteriore = dto.VetroPosteriore;
+
+            d.ModifiedData = DateTime.Now;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteExitAsync(Guid repairId)
+        {
+            var e = await _context.ExitTests
+                        .FirstOrDefaultAsync(x => x.RepairId == repairId && (x.IsDeleted == false || x.IsDeleted == null));
+            if (e == null) return;
+            e.IsDeleted = true;
+            e.ModifiedData = DateTime.Now;
+            await _context.SaveChangesAsync();
+        }
+
+
+
+
+
     }
 }

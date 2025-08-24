@@ -14,5 +14,15 @@ namespace MediaLabAPI.Services
         Task UpdateRepairStatusAsync(int repairId, string statusCode, string status, string? notes);        
         Task UpdateRepairAsync(Guid repairId, UpdateRepairRequestDto request);
         Task<IEnumerable<RepairDetailDto>> GetRepairsLightAsync(RepairSearchRequestDto searchRequest);
+        Task<RepairDetailDto?> GetRepairDetailByIdAsync(int id);
+
+        // Diagnostica (Incoming / Exit)
+        Task<IncomingTestDto?> GetIncomingAsync(Guid repairId);
+        Task UpsertIncomingAsync(Guid repairId, IncomingTestDto dto);
+        Task DeleteIncomingAsync(Guid repairId);
+
+        Task<ExitTestDto?> GetExitAsync(Guid repairId);
+        Task UpsertExitAsync(Guid repairId, ExitTestDto dto);
+        Task DeleteExitAsync(Guid repairId);
     }
 }
