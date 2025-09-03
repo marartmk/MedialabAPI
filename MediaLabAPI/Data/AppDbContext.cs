@@ -405,7 +405,8 @@ public partial class AppDbContext : DbContext
         modelBuilder.Entity<IncomingTest>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.ToTable("IncomingTests");
+            //entity.ToTable("IncomingTests");
+            entity.ToTable("IncomingTests", tb => tb.UseSqlOutputClause(false));
 
             entity.Property(e => e.Id)
                 .HasColumnName("Id")
@@ -493,7 +494,8 @@ public partial class AppDbContext : DbContext
         modelBuilder.Entity<ExitTest>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.ToTable("ExitTests");
+            //entity.ToTable("ExitTests");
+            entity.ToTable("ExitTests", tb => tb.UseSqlOutputClause(false));
 
             entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
             entity.Property(e => e.CompanyId).HasColumnName("company_id").IsRequired();
