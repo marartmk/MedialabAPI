@@ -19,27 +19,27 @@ namespace MediaLabAPI.Controllers
         }
 
         // 🔹 GET: api/customer
-       [HttpGet]
-public async Task<ActionResult<IEnumerable<C_ANA_Company>>> GetAll([FromQuery] Guid multitenantId)
-{
-    if (multitenantId == Guid.Empty)
-        return BadRequest("Il parametro multitenantId è obbligatorio.");
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<C_ANA_Company>>> GetAll([FromQuery] Guid multitenantId)
+        {
+            if (multitenantId == Guid.Empty)
+                return BadRequest("Il parametro multitenantId è obbligatorio.");
 
-    try
-    {
-        var companies = await _context.C_ANA_Companies
-            .Where(c =>
-                (c.IsDeleted == false || c.IsDeleted == null) &&
-                c.MultiTenantId == multitenantId)
-            .ToListAsync();
+            try
+            {
+                var companies = await _context.C_ANA_Companies
+                    .Where(c =>
+                        (c.IsDeleted == false || c.IsDeleted == null) &&
+                        c.MultiTenantId == multitenantId)
+                    .ToListAsync();
 
-        return Ok(companies);
-    }
-    catch (Exception ex)
-    {
-        return StatusCode(500, $"Errore interno: {ex.Message}");
-    }
-}
+                return Ok(companies);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Errore interno: {ex.Message}");
+            }
+        }
 
         // 🔹 GET: api/customer
         [HttpGet("customeraffiliated")]
@@ -126,7 +126,7 @@ public async Task<ActionResult<IEnumerable<C_ANA_Company>>> GetAll([FromQuery] G
                 if (existingCustomer == null)
                     return NotFound($"Cliente con ID {id} non trovato");
 
-                // 🔹 AGGIORNA SOLO I CAMPI MODIFICABILI
+                // 🔹 AGGIORNA TUTTI I CAMPI MODIFICABILI
                 existingCustomer.RagioneSociale = updatedCustomer.RagioneSociale;
                 existingCustomer.Cognome = updatedCustomer.Cognome;
                 existingCustomer.Nome = updatedCustomer.Nome;
@@ -135,21 +135,27 @@ public async Task<ActionResult<IEnumerable<C_ANA_Company>>> GetAll([FromQuery] G
                 existingCustomer.Email = updatedCustomer.Email;
                 existingCustomer.Telefono = updatedCustomer.Telefono;
                 existingCustomer.isCustomer = updatedCustomer.isCustomer;
-                existingCustomer.UpdatedAt = DateTime.UtcNow;
+                existingCustomer.isSupplier = updatedCustomer.isSupplier; // AGGIUNTO
                 existingCustomer.Tipologia = updatedCustomer.Tipologia;
                 existingCustomer.Indirizzo = updatedCustomer.Indirizzo;
                 existingCustomer.Cap = updatedCustomer.Cap;
                 existingCustomer.Regione = updatedCustomer.Regione;
                 existingCustomer.Provincia = updatedCustomer.Provincia;
                 existingCustomer.Citta = updatedCustomer.Citta;
-                existingCustomer.Telefono = updatedCustomer.Telefono;
-                existingCustomer.Email = updatedCustomer.Email;
-                existingCustomer.FiscalCode = updatedCustomer.FiscalCode;
-                existingCustomer.PIva = updatedCustomer.PIva;
                 existingCustomer.EmailPec = updatedCustomer.EmailPec;
                 existingCustomer.CodiceSdi = updatedCustomer.CodiceSdi;
                 existingCustomer.IBAN = updatedCustomer.IBAN;
                 existingCustomer.MultiTenantId = updatedCustomer.MultiTenantId;
+
+                // 🆕 CAMPI AFFILIAZIONE - AGGIUNTI
+                existingCustomer.isAffiliate = updatedCustomer.isAffiliate;
+                existingCustomer.AffiliateCode = updatedCustomer.AffiliateCode;
+                existingCustomer.AffiliatedDataStart = updatedCustomer.AffiliatedDataStart;
+                existingCustomer.AffiliatedDataEnd = updatedCustomer.AffiliatedDataEnd;
+                existingCustomer.AffiliateStatus = updatedCustomer.AffiliateStatus;
+
+                // 🔹 TIMESTAMP AGGIORNAMENTO
+                existingCustomer.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
                 return NoContent();
@@ -183,7 +189,7 @@ public async Task<ActionResult<IEnumerable<C_ANA_Company>>> GetAll([FromQuery] G
             {
                 return StatusCode(500, $"Errore durante la cancellazione: {ex.Message}");
             }
-        }       
+        }
 
         [HttpGet("search")]
         public async Task<IActionResult> Search(

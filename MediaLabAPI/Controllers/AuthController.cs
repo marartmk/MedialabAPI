@@ -7,6 +7,8 @@ using System.Security.Claims;
 using System.Text;
 using MediaLabAPI.Configurations;
 using MediaLabAPI.Data;
+using MediaLabAPI.DTOs.Common;
+using MediaLabAPI.Models;
 
 namespace MediaLabAPI.Controllers
 {
@@ -255,6 +257,313 @@ namespace MediaLabAPI.Controllers
                 idCompany = user.IdCompany,
                 companyName = company?.RagioneSociale ?? "Azienda sconosciuta"
             });
+        }
+
+        // CREAZIONE NUOVO UTENTE
+        [HttpPost("create-user")]
+        [Authorize]
+        public IActionResult CreateUser([FromBody] CreateUserDto request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                // Verifica che l'username non esista già
+                var existingUser = _db.SysUsers.FirstOrDefault(u => u.Username == request.Username);
+                if (existingUser != null)
+                {
+                    return Conflict("Username già esistente");
+                }
+
+                // Verifica che l'email non esista già (se fornita)
+                if (!string.IsNullOrWhiteSpace(request.Email))
+                {
+                    var existingEmail = _db.SysUsers.FirstOrDefault(u => u.Email == request.Email);
+                    if (existingEmail != null)
+                    {
+                        return Conflict("Email già registrata");
+                    }
+                }
+
+                // Verifica che la company esista
+                var company = _db.C_ANA_Companies.FirstOrDefault(c => c.Id == request.IdCompany);
+                if (company == null)
+                {
+                    return BadRequest("IdCompany non valido");
+                }
+
+                // Hash della password
+                var passwordHash = Convert.ToBase64String(
+                    System.Security.Cryptography.SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(request.Password))
+                );
+
+                // Creazione nuovo utente
+                var newUser = new SysUser
+                {
+                    Id = Guid.NewGuid(),
+                    IdWhr = request.IdWhr,
+                    IdCompany = request.IdCompany,
+                    Username = request.Username,
+                    PasswordHash = passwordHash,
+                    Email = request.Email,
+                    IsAdmin = request.IsAdmin,
+                    IsEnabled = true,
+                    AccessLevel = request.AccessLevel,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _db.SysUsers.Add(newUser);
+                _db.SaveChanges();
+
+                return Ok(new CreateUserResponseDto
+                {
+                    Id = newUser.Id,
+                    Username = newUser.Username,
+                    Email = newUser.Email ?? string.Empty,
+                    IdCompany = newUser.IdCompany,
+                    CompanyName = company.RagioneSociale ?? "N/A",
+                    Message = "Utente creato con successo",
+                    CreatedAt = newUser.CreatedAt,
+                    IsAdmin = newUser.IsAdmin,
+                    AccessLevel = newUser.AccessLevel
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Errore durante la creazione dell'utente: {ex.Message}");
+            }
+        }
+
+        // CREAZIONE UTENTE AFFILIATO (combinata)
+        [HttpPost("create-affiliate-user")]
+        [Authorize]
+        public IActionResult CreateAffiliateUser([FromBody] CreateAffiliateUserDto request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                // Verifica che il customer/company esista e sia affiliato
+                var customer = _db.C_ANA_Companies.FirstOrDefault(c => c.Id == request.IdCustomer && c.isAffiliate == true);
+                if (customer == null)
+                {
+                    return BadRequest("Customer non trovato o non affiliato");
+                }
+
+                // Verifica che l'username non esista già
+                var existingUser = _db.SysUsers.FirstOrDefault(u => u.Username == request.Username);
+                if (existingUser != null)
+                {
+                    return Conflict("Username già esistente");
+                }
+
+                // Verifica che l'email non esista già (se fornita)
+                if (!string.IsNullOrWhiteSpace(request.Email))
+                {
+                    var existingEmail = _db.SysUsers.FirstOrDefault(u => u.Email == request.Email);
+                    if (existingEmail != null)
+                    {
+                        return Conflict("Email già registrata");
+                    }
+                }
+
+                // Hash della password
+                var passwordHash = Convert.ToBase64String(
+                    System.Security.Cryptography.SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(request.Password))
+                );
+
+                // Creazione nuovo utente affiliato
+                var newUser = new SysUser
+                {
+                    Id = Guid.NewGuid(),
+                    IdCompany = request.IdCustomer,
+                    Username = request.Username,
+                    PasswordHash = passwordHash,
+                    Email = request.Email,
+                    IsAdmin = false, // Gli affiliati non sono admin
+                    IsEnabled = true,
+                    AccessLevel = request.AccessLevel,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _db.SysUsers.Add(newUser);
+                _db.SaveChanges();
+
+                return Ok(new CreateAffiliateUserResponseDto
+                {
+                    UserId = newUser.Id,
+                    Username = newUser.Username,
+                    Email = newUser.Email ?? string.Empty,
+                    CustomerId = request.IdCustomer,
+                    CustomerName = customer.RagioneSociale ?? "N/A",
+                    AccessLevel = newUser.AccessLevel ?? "Affiliate",
+                    CreatedAt = newUser.CreatedAt,
+                    Message = "Utente affiliato creato con successo"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Errore durante la creazione dell'utente affiliato: {ex.Message}");
+            }
+        }
+
+        // AGGIORNAMENTO UTENTE
+        [HttpPut("update-user/{userId}")]
+        [Authorize]
+        public IActionResult UpdateUser(Guid userId, [FromBody] UpdateUserDto request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                var user = _db.SysUsers.FirstOrDefault(u => u.Id == userId);
+                if (user == null)
+                {
+                    return NotFound("Utente non trovato");
+                }
+
+                // Aggiorna solo i campi forniti
+                if (!string.IsNullOrWhiteSpace(request.Email))
+                {
+                    var existingEmail = _db.SysUsers.FirstOrDefault(u => u.Email == request.Email && u.Id != userId);
+                    if (existingEmail != null)
+                    {
+                        return Conflict("Email già registrata");
+                    }
+                    user.Email = request.Email;
+                }
+
+                if (request.IsEnabled.HasValue)
+                    user.IsEnabled = request.IsEnabled.Value;
+
+                if (request.IsAdmin.HasValue)
+                    user.IsAdmin = request.IsAdmin.Value;
+
+                if (request.AccessLevel != null)
+                    user.AccessLevel = request.AccessLevel;
+
+                _db.SaveChanges();
+                return Ok("Utente aggiornato con successo");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Errore durante l'aggiornamento: {ex.Message}");
+            }
+        }
+
+        // LISTA UTENTI PER COMPANY
+        [HttpGet("users/{companyId}")]
+        [Authorize]
+        public IActionResult GetUsersByCompany(Guid companyId)
+        {
+            try
+            {
+                var company = _db.C_ANA_Companies.FirstOrDefault(c => c.Id == companyId);
+                if (company == null)
+                {
+                    return NotFound("Company non trovata");
+                }
+
+                var users = _db.SysUsers
+                    .Where(u => u.IdCompany == companyId)
+                    .Select(u => new UserDetailDto
+                    {
+                        Id = u.Id,
+                        Username = u.Username,
+                        Email = u.Email,
+                        IdCompany = u.IdCompany,
+                        CompanyName = company.RagioneSociale ?? "N/A",
+                        IsAdmin = u.IsAdmin,
+                        IsEnabled = u.IsEnabled,
+                        AccessLevel = u.AccessLevel,
+                        CreatedAt = u.CreatedAt,
+                        LastLogin = u.LastLogin,
+                        IdWhr = u.IdWhr
+                    })
+                    .OrderBy(u => u.Username)
+                    .ToList();
+
+                var response = new UsersListDto
+                {
+                    Users = users,
+                    TotalCount = users.Count,
+                    CompanyId = companyId,
+                    CompanyName = company.RagioneSociale ?? "N/A"
+                };
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Errore durante il recupero: {ex.Message}");
+            }
+        }
+
+        // CAMBIO PASSWORD
+        [HttpPut("change-password/{userId}")]
+        [Authorize]
+        public IActionResult ChangePassword(Guid userId, [FromBody] ChangePasswordDto request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                var user = _db.SysUsers.FirstOrDefault(u => u.Id == userId);
+                if (user == null)
+                {
+                    return NotFound("Utente non trovato");
+                }
+
+                var newPasswordHash = Convert.ToBase64String(
+                    System.Security.Cryptography.SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(request.NewPassword))
+                );
+
+                user.PasswordHash = newPasswordHash;
+                _db.SaveChanges();
+
+                return Ok("Password cambiata con successo");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Errore durante il cambio password: {ex.Message}");
+            }
+        }
+
+        // DISABILITAZIONE/RIABILITAZIONE UTENTE
+        [HttpPut("toggle-user-status/{userId}")]
+        [Authorize]
+        public IActionResult ToggleUserStatus(Guid userId)
+        {
+            try
+            {
+                var user = _db.SysUsers.FirstOrDefault(u => u.Id == userId);
+                if (user == null)
+                {
+                    return NotFound("Utente non trovato");
+                }
+
+                user.IsEnabled = !user.IsEnabled;
+                _db.SaveChanges();
+
+                var status = user.IsEnabled ? "abilitato" : "disabilitato";
+                return Ok($"Utente {status} con successo");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Errore durante il cambio stato: {ex.Message}");
+            }
         }
 
     }

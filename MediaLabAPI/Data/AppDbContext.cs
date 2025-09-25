@@ -26,6 +26,11 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<IncomingTest> IncomingTests { get; set; }
     public virtual DbSet<ExitTest> ExitTests { get; set; }
 
+    // DbSets per il magazzino
+    public virtual DbSet<WarehouseItem> WarehouseItems { get; set; }
+    public virtual DbSet<WarehouseCategory> WarehouseCategories { get; set; }
+    public virtual DbSet<WarehouseSupplier> WarehouseSuppliers { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Server=192.168.3.20;Database=MedialabNexttest;User Id=sa;Password=4PCgKYB3yyj5hE78;TrustServerCertificate=True;");
@@ -198,13 +203,26 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.LastLogin).HasColumnType("datetime");
         });
 
-        // 🔹 CONFIGURAZIONE C_ANA_Operators (mantengo solo la parte essenziale)
+        // 🔹 CONFIGURAZIONE C_ANA_Operators 
         modelBuilder.Entity<C_ANA_Operators>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PK_Users");
             entity.ToTable("C_ANA_Operators");
             entity.Property(e => e.Id).ValueGeneratedNever();
-            // ... resto della configurazione (mantengo come era)
+
+            // === MAPPATURE NOMI COLONNE DIVERSE DAL MODEL ===
+            entity.Property(e => e.Idcompany).HasColumnName("IDCompany");
+            entity.Property(e => e.DelmeCodiceDitta).HasColumnName("DELME_CodiceDitta");
+            entity.Property(e => e.DelmeTelefono).HasColumnName("DELME_Telefono");
+            entity.Property(e => e.Iban).HasColumnName("IBAN");
+            entity.Property(e => e.Ral).HasColumnName("RAL");
+            entity.Property(e => e.IsOperatoreLooc).HasColumnName("isOperatoreLOOC");
+            entity.Property(e => e.ReceiveOtpiride).HasColumnName("receiveOTPIride");
+
+            // (opzionale ma consigliato: tipi precisi dove non standard)
+            entity.Property(e => e.OraStatoAccount).HasColumnType("time(7)");
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+            entity.Property(e => e.LockoutEnd).HasColumnType("datetimeoffset(7)");
         });
 
         // 🔹 CONFIGURAZIONE DeviceRegistry
@@ -541,6 +559,289 @@ public partial class AppDbContext : DbContext
                   .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasIndex(e => e.RepairId).HasDatabaseName("IX_ExitTests_RepairId");
+        });
+
+        // 🔹 CONFIGURAZIONE WarehouseItem
+        modelBuilder.Entity<WarehouseItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("WarehouseItems");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(e => e.ItemId)
+                .IsRequired()
+                .HasDefaultValueSql("NEWID()"); // GUID generato dal database
+
+            entity.Property(e => e.Code)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(e => e.Description)
+                .HasMaxLength(500)
+                .IsRequired(false);
+
+            entity.Property(e => e.Category)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Subcategory)
+                .HasMaxLength(100)
+                .IsRequired(false);
+
+            entity.Property(e => e.Brand)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Model)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Supplier)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Quantity)
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.MinQuantity)
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.MaxQuantity)
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.UnitPrice)
+                .HasColumnType("decimal(10,2)")
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.TotalValue)
+                .HasColumnType("decimal(12,2)")
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.Location)
+                .HasMaxLength(100)
+                .IsRequired(false);
+
+            entity.Property(e => e.Notes)
+                .HasMaxLength(1000)
+                .IsRequired(false);
+
+            entity.Property(e => e.CompanyId)
+                .IsRequired();
+
+            entity.Property(e => e.MultitenantId)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("(getdate())")
+                .IsRequired();
+
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime")
+                .IsRequired(false);
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100)
+                .IsRequired(false);
+
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(100)
+                .IsRequired(false);
+
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValue(false)
+                .IsRequired();
+
+            // Relazioni
+            entity.HasOne(e => e.Company)
+                .WithMany()
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Indici
+            entity.HasIndex(e => e.ItemId)
+                .IsUnique()
+                .HasDatabaseName("IX_WarehouseItems_ItemId");
+
+            entity.HasIndex(e => e.Code)
+                .IsUnique()
+                .HasDatabaseName("IX_WarehouseItems_Code")
+                .HasFilter("[IsDeleted] = 0"); // Indice unico solo per record non eliminati
+
+            entity.HasIndex(e => e.CompanyId)
+                .HasDatabaseName("IX_WarehouseItems_CompanyId");
+
+            entity.HasIndex(e => e.MultitenantId)
+                .HasDatabaseName("IX_WarehouseItems_MultitenantId");
+
+            entity.HasIndex(e => e.Category)
+                .HasDatabaseName("IX_WarehouseItems_Category");
+
+            entity.HasIndex(e => e.Supplier)
+                .HasDatabaseName("IX_WarehouseItems_Supplier");
+
+            entity.HasIndex(e => e.Brand)
+                .HasDatabaseName("IX_WarehouseItems_Brand");
+
+            entity.HasIndex(e => new { e.MultitenantId, e.Category })
+                .HasDatabaseName("IX_WarehouseItems_MultitenantId_Category");
+
+            entity.HasIndex(e => new { e.MultitenantId, e.Supplier })
+                .HasDatabaseName("IX_WarehouseItems_MultitenantId_Supplier");
+        });
+
+        // 🔹 CONFIGURAZIONE WarehouseCategory
+        modelBuilder.Entity<WarehouseCategory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("WarehouseCategories");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(e => e.CategoryId)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Icon)
+                .HasMaxLength(10)
+                .IsRequired(false);
+
+            entity.Property(e => e.Color)
+                .HasMaxLength(10)
+                .IsRequired(false);
+
+            entity.Property(e => e.CompanyId)
+                .IsRequired();
+
+            entity.Property(e => e.MultitenantId)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("(getdate())")
+                .IsRequired();
+
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValue(false)
+                .IsRequired();
+
+            // Relazioni
+            entity.HasOne(e => e.Company)
+                .WithMany()
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Indici
+            entity.HasIndex(e => new { e.MultitenantId, e.CategoryId })
+                .IsUnique()
+                .HasDatabaseName("IX_WarehouseCategories_MultitenantId_CategoryId")
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.HasIndex(e => e.CompanyId)
+                .HasDatabaseName("IX_WarehouseCategories_CompanyId");
+
+            entity.HasIndex(e => e.MultitenantId)
+                .HasDatabaseName("IX_WarehouseCategories_MultitenantId");
+        });
+
+        // 🔹 CONFIGURAZIONE WarehouseSupplier
+        modelBuilder.Entity<WarehouseSupplier>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("WarehouseSuppliers");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(e => e.SupplierId)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(e => e.Contact)
+                .HasMaxLength(200)
+                .IsRequired(false);
+
+            entity.Property(e => e.Address)
+                .HasMaxLength(500)
+                .IsRequired(false);
+
+            entity.Property(e => e.Phone)
+                .HasMaxLength(100)
+                .IsRequired(false);
+
+            entity.Property(e => e.Email)
+                .HasMaxLength(100)
+                .IsRequired(false);
+
+            entity.Property(e => e.Notes)
+                .HasMaxLength(1000)
+                .IsRequired(false);
+
+            entity.Property(e => e.CompanyId)
+                .IsRequired();
+
+            entity.Property(e => e.MultitenantId)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("(getdate())")
+                .IsRequired();
+
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime")
+                .IsRequired(false);
+
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValue(false)
+                .IsRequired();
+
+            // Relazioni
+            entity.HasOne(e => e.Company)
+                .WithMany()
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(e => e.Items)
+                .WithOne()
+                .HasForeignKey(i => i.Supplier)
+                .HasPrincipalKey(s => s.SupplierId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Indici
+            entity.HasIndex(e => new { e.MultitenantId, e.SupplierId })
+                .IsUnique()
+                .HasDatabaseName("IX_WarehouseSuppliers_MultitenantId_SupplierId")
+                .HasFilter("[IsDeleted] = 0");
+
+            entity.HasIndex(e => e.CompanyId)
+                .HasDatabaseName("IX_WarehouseSuppliers_CompanyId");
+
+            entity.HasIndex(e => e.MultitenantId)
+                .HasDatabaseName("IX_WarehouseSuppliers_MultitenantId");
+
+            entity.HasIndex(e => e.Name)
+                .HasDatabaseName("IX_WarehouseSuppliers_Name");
         });
 
 
