@@ -31,6 +31,9 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<WarehouseCategory> WarehouseCategories { get; set; }
     public virtual DbSet<WarehouseSupplier> WarehouseSuppliers { get; set; }
 
+    // DbSet Per Geolocalizzazione Affiliati
+    public virtual DbSet<AffiliateGeolocation> AffiliateGeolocations { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Server=192.168.3.20;Database=MedialabNexttest;User Id=sa;Password=4PCgKYB3yyj5hE78;TrustServerCertificate=True;");
@@ -842,6 +845,90 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.Name)
                 .HasDatabaseName("IX_WarehouseSuppliers_Name");
+        });
+
+        // 🔹 CONFIGURAZIONE AffiliateGeolocation
+        modelBuilder.Entity<AffiliateGeolocation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("AffiliateGeolocations");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(e => e.AffiliateId)
+                .IsRequired()
+                .HasColumnName("AffiliateId");
+
+            entity.Property(e => e.Latitude)
+                .HasColumnType("decimal(10, 8)")
+                .HasColumnName("Latitude");
+
+            entity.Property(e => e.Longitude)
+                .HasColumnType("decimal(11, 8)")
+                .HasColumnName("Longitude");
+
+            entity.Property(e => e.Address)
+                .HasMaxLength(500)
+                .HasColumnName("Address");
+
+            entity.Property(e => e.GeocodedDate)
+                .IsRequired()
+                .HasColumnType("datetime2")
+                .HasColumnName("GeocodedDate");
+
+            entity.Property(e => e.Quality)
+                .HasMaxLength(50)
+                .HasColumnName("Quality");
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasColumnType("datetime2")
+                .HasColumnName("CreatedAt")
+                .HasDefaultValueSql("(getdate())");
+
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime2")
+                .HasColumnName("UpdatedAt");
+
+            entity.Property(e => e.Notes)
+                .HasMaxLength(100)
+                .HasColumnName("Notes");
+
+            entity.Property(e => e.IsActive)
+                .IsRequired()
+                .HasColumnName("IsActive")
+                .HasDefaultValue(true);
+
+            entity.Property(e => e.GeocodingSource)
+                .HasMaxLength(50)
+                .HasColumnName("GeocodingSource");
+
+            // Relazione con C_ANA_Company
+            entity.HasOne(e => e.Affiliate)
+                .WithMany()
+                .HasForeignKey(e => e.AffiliateId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_AffiliateGeolocations_AffiliateId");
+
+            // Indici per performance
+            entity.HasIndex(e => e.AffiliateId)
+                .IsUnique()
+                .HasDatabaseName("IX_AffiliateGeolocations_AffiliateId")
+                .HasFilter("[IsActive] = 1");
+
+            entity.HasIndex(e => e.IsActive)
+                .HasDatabaseName("IX_AffiliateGeolocations_IsActive");
+
+            entity.HasIndex(e => new { e.Latitude, e.Longitude })
+                .HasDatabaseName("IX_AffiliateGeolocations_Coordinates")
+                .HasFilter("[Latitude] IS NOT NULL AND [Longitude] IS NOT NULL");
+
+            entity.HasIndex(e => e.GeocodedDate)
+                .HasDatabaseName("IX_AffiliateGeolocations_GeocodedDate");
+
+            entity.HasIndex(e => e.Quality)
+                .HasDatabaseName("IX_AffiliateGeolocations_Quality");
         });
 
 

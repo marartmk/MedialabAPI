@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MediaLabAPI.Data;
 using MediaLabAPI.Models;
+using MediaLabAPI.DTOs;
 
 namespace MediaLabAPI.Controllers
 {
@@ -215,6 +216,260 @@ namespace MediaLabAPI.Controllers
                 .ToListAsync();
 
             return Ok(results);
+        }
+
+        // Aggiungi questi metodi al CustomerController esistente
+
+        // GET: api/customer/customeraffiliated/with-geolocation
+        [HttpGet("customeraffiliated/with-geolocation")]
+        public async Task<IActionResult> GetAffiliatedCustomersWithGeolocation([FromQuery] Guid multitenantId)
+        {
+            if (multitenantId == Guid.Empty)
+                return BadRequest("MultiTenantId obbligatorio.");
+
+            try
+            {
+                var results = await _context.C_ANA_Companies
+                    .Where(c =>
+                        (c.IsDeleted == false || c.IsDeleted == null) &&
+                        c.MultiTenantId == multitenantId &&
+                        c.isAffiliate == true)
+                    .GroupJoin(
+                        _context.AffiliateGeolocations.Where(ag => ag.IsActive),
+                        customer => customer.Id,
+                        geolocation => geolocation.AffiliateId,
+                        (customer, geolocations) => new
+                        {
+                            // Dati base dell'affiliato
+                            id = customer.Id.ToString(),
+                            ragioneSociale = customer.RagioneSociale,
+                            nome = customer.Nome,
+                            cognome = customer.Cognome,
+                            citta = customer.Citta,
+                            provincia = customer.Provincia,
+                            regione = customer.Regione,
+                            telefono = customer.Telefono,
+                            emailAziendale = customer.Email,
+                            pIva = customer.PIva,
+                            indirizzo = customer.Indirizzo,
+                            cap = customer.Cap,
+
+                            // Dati di geolocalizzazione
+                            lat = geolocations.FirstOrDefault() != null ? (double?)geolocations.FirstOrDefault()!.Latitude : null,
+                            lng = geolocations.FirstOrDefault() != null ? (double?)geolocations.FirstOrDefault()!.Longitude : null,
+                            geocoded = geolocations.Any(g => g.HasValidCoordinates),
+                            fromCache = geolocations.Any(),
+                            geocodingQuality = geolocations.FirstOrDefault() != null ? geolocations.FirstOrDefault()!.Quality : null,
+                            geocodingSource = geolocations.FirstOrDefault() != null ? geolocations.FirstOrDefault()!.GeocodingSource : null,
+                            lastGeocodedDate = geolocations.FirstOrDefault() != null ? geolocations.FirstOrDefault()!.GeocodedDate : (DateTime?)null
+                        })
+                    .ToListAsync();
+
+                return Ok(results);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Errore interno: {ex.Message}");
+            }
+        }
+
+        // GET: api/customer/{id}/geolocation
+        [HttpGet("{id}/geolocation")]
+        public async Task<ActionResult<AffiliateGeolocationDto>> GetAffiliateGeolocation(Guid id)
+        {
+            try
+            {
+                // Verifica che sia un affiliato
+                var affiliate = await _context.C_ANA_Companies
+                    .FirstOrDefaultAsync(c => c.Id == id &&
+                                            c.isAffiliate == true &&
+                                            (c.IsDeleted == false || c.IsDeleted == null));
+
+                if (affiliate == null)
+                    return NotFound("Affiliato non trovato");
+
+                var geolocation = await _context.AffiliateGeolocations
+                    .Where(ag => ag.AffiliateId == id && ag.IsActive)
+                    .Select(ag => new AffiliateGeolocationDto
+                    {
+                        Id = ag.Id,
+                        AffiliateId = ag.AffiliateId,
+                        Latitude = ag.Latitude,
+                        Longitude = ag.Longitude,
+                        Address = ag.Address,
+                        GeocodedDate = ag.GeocodedDate,
+                        Quality = ag.Quality,
+                        Notes = ag.Notes,
+                        IsActive = ag.IsActive,
+                        GeocodingSource = ag.GeocodingSource,
+                        HasValidCoordinates = ag.HasValidCoordinates,
+                        CreatedAt = ag.CreatedAt,
+                        UpdatedAt = ag.UpdatedAt
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (geolocation == null)
+                    return NotFound("Geolocalizzazione non trovata per questo affiliato");
+
+                return Ok(geolocation);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Errore interno: {ex.Message}");
+            }
+        }
+
+        // POST: api/customer/{id}/geolocation
+        [HttpPost("{id}/geolocation")]
+        public async Task<ActionResult<AffiliateGeolocationDto>> CreateAffiliateGeolocation(Guid id, CreateAffiliateGeolocationDto createDto)
+        {
+            try
+            {
+                // Verifica che sia un affiliato
+                var affiliate = await _context.C_ANA_Companies
+                    .FirstOrDefaultAsync(c => c.Id == id &&
+                                            c.isAffiliate == true &&
+                                            (c.IsDeleted == false || c.IsDeleted == null));
+
+                if (affiliate == null)
+                    return NotFound("Affiliato non trovato");
+
+                // Forza l'ID dell'affiliato dal path
+                createDto.AffiliateId = id;
+
+                // Verifica se esiste già
+                var existingGeolocation = await _context.AffiliateGeolocations
+                    .FirstOrDefaultAsync(ag => ag.AffiliateId == id && ag.IsActive);
+
+                if (existingGeolocation != null)
+                    return Conflict("Geolocalizzazione già esistente per questo affiliato");
+
+                // Costruisci l'indirizzo se non fornito
+                if (string.IsNullOrWhiteSpace(createDto.Address) && affiliate != null)
+                {
+                    createDto.Address = $"{affiliate.Indirizzo}, {affiliate.Cap} {affiliate.Citta}, {affiliate.Provincia}, Italy";
+                }
+
+                var geolocation = new AffiliateGeolocation
+                {
+                    AffiliateId = createDto.AffiliateId,
+                    Latitude = createDto.Latitude,
+                    Longitude = createDto.Longitude,
+                    Address = createDto.Address,
+                    GeocodedDate = DateTime.UtcNow,
+                    Quality = createDto.Quality ?? "UNKNOWN",
+                    Notes = createDto.Notes,
+                    IsActive = true,
+                    GeocodingSource = createDto.GeocodingSource ?? "Manual",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.AffiliateGeolocations.Add(geolocation);
+                await _context.SaveChangesAsync();
+
+                var resultDto = new AffiliateGeolocationDto
+                {
+                    Id = geolocation.Id,
+                    AffiliateId = geolocation.AffiliateId,
+                    Latitude = geolocation.Latitude,
+                    Longitude = geolocation.Longitude,
+                    Address = geolocation.Address,
+                    GeocodedDate = geolocation.GeocodedDate,
+                    Quality = geolocation.Quality,
+                    Notes = geolocation.Notes,
+                    IsActive = geolocation.IsActive,
+                    GeocodingSource = geolocation.GeocodingSource,
+                    HasValidCoordinates = geolocation.HasValidCoordinates,
+                    CreatedAt = geolocation.CreatedAt,
+                    UpdatedAt = geolocation.UpdatedAt
+                };
+
+                return CreatedAtAction(nameof(GetAffiliateGeolocation), new { id = geolocation.AffiliateId }, resultDto);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Errore interno: {ex.Message}");
+            }
+        }
+
+        // PUT: api/customer/{id}/geolocation
+        [HttpPut("{id}/geolocation")]
+        public async Task<IActionResult> UpdateAffiliateGeolocation(Guid id, UpdateAffiliateGeolocationDto updateDto)
+        {
+            try
+            {
+                // Verifica che sia un affiliato
+                var affiliate = await _context.C_ANA_Companies
+                    .FirstOrDefaultAsync(c => c.Id == id &&
+                                            c.isAffiliate == true &&
+                                            (c.IsDeleted == false || c.IsDeleted == null));
+
+                if (affiliate == null)
+                    return NotFound("Affiliato non trovato");
+
+                var geolocation = await _context.AffiliateGeolocations
+                    .FirstOrDefaultAsync(ag => ag.AffiliateId == id && ag.IsActive);
+
+                if (geolocation == null)
+                    return NotFound("Geolocalizzazione non trovata per questo affiliato");
+
+                // Aggiorna solo i campi forniti
+                if (updateDto.Latitude.HasValue)
+                    geolocation.Latitude = updateDto.Latitude;
+
+                if (updateDto.Longitude.HasValue)
+                    geolocation.Longitude = updateDto.Longitude;
+
+                if (!string.IsNullOrWhiteSpace(updateDto.Address))
+                    geolocation.Address = updateDto.Address;
+
+                if (!string.IsNullOrWhiteSpace(updateDto.Quality))
+                    geolocation.Quality = updateDto.Quality;
+
+                if (updateDto.Notes != null)
+                    geolocation.Notes = updateDto.Notes;
+
+                if (updateDto.IsActive.HasValue)
+                    geolocation.IsActive = updateDto.IsActive.Value;
+
+                if (!string.IsNullOrWhiteSpace(updateDto.GeocodingSource))
+                    geolocation.GeocodingSource = updateDto.GeocodingSource;
+
+                geolocation.UpdatedAt = DateTime.UtcNow;
+                geolocation.GeocodedDate = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Errore interno: {ex.Message}");
+            }
+        }
+
+        // DELETE: api/customer/{id}/geolocation
+        [HttpDelete("{id}/geolocation")]
+        public async Task<IActionResult> DeleteAffiliateGeolocation(Guid id)
+        {
+            try
+            {
+                var geolocation = await _context.AffiliateGeolocations
+                    .FirstOrDefaultAsync(ag => ag.AffiliateId == id && ag.IsActive);
+
+                if (geolocation == null)
+                    return NotFound("Geolocalizzazione non trovata per questo affiliato");
+
+                // Soft delete
+                geolocation.IsActive = false;
+                geolocation.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Errore interno: {ex.Message}");
+            }
         }
     }
 }
