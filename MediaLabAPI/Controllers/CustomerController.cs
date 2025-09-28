@@ -220,7 +220,7 @@ namespace MediaLabAPI.Controllers
 
         // Aggiungi questi metodi al CustomerController esistente
 
-        // GET: api/customer/customeraffiliated/with-geolocation
+        // GET: api/customer/customeraffiliated/with-geolocation       
         [HttpGet("customeraffiliated/with-geolocation")]
         public async Task<IActionResult> GetAffiliatedCustomersWithGeolocation([FromQuery] Guid multitenantId)
         {
@@ -254,10 +254,10 @@ namespace MediaLabAPI.Controllers
                             indirizzo = customer.Indirizzo,
                             cap = customer.Cap,
 
-                            // Dati di geolocalizzazione
+                            // Dati di geolocalizzazione - CORRETTO: usa le colonne del DB
                             lat = geolocations.FirstOrDefault() != null ? (double?)geolocations.FirstOrDefault()!.Latitude : null,
                             lng = geolocations.FirstOrDefault() != null ? (double?)geolocations.FirstOrDefault()!.Longitude : null,
-                            geocoded = geolocations.Any(g => g.HasValidCoordinates),
+                            geocoded = geolocations.Any(g => g.Latitude != null && g.Longitude != null && g.Latitude != 0 && g.Longitude != 0), // ✅ Usa le colonne DB
                             fromCache = geolocations.Any(),
                             geocodingQuality = geolocations.FirstOrDefault() != null ? geolocations.FirstOrDefault()!.Quality : null,
                             geocodingSource = geolocations.FirstOrDefault() != null ? geolocations.FirstOrDefault()!.GeocodingSource : null,
@@ -272,7 +272,6 @@ namespace MediaLabAPI.Controllers
                 return StatusCode(500, $"Errore interno: {ex.Message}");
             }
         }
-
         // GET: api/customer/{id}/geolocation
         [HttpGet("{id}/geolocation")]
         public async Task<ActionResult<AffiliateGeolocationDto>> GetAffiliateGeolocation(Guid id)
