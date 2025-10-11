@@ -106,42 +106,32 @@ namespace MediaLabAPI.DTOs.Repair
     /// </summary>
     public class UpdateQuickRepairNoteDto
     {
+        public Guid? CustomerId { get; set; }
+        public Guid? DeviceId { get; set; }
         [MaxLength(100)]
         public string? Brand { get; set; }
-
         [MaxLength(100)]
         public string? Model { get; set; }
-
         [MaxLength(200)]
         public string? RagioneSociale { get; set; }
-
         [MaxLength(100)]
         public string? Cognome { get; set; }
-
         [MaxLength(100)]
         public string? Nome { get; set; }
-
         [MaxLength(50)]
         public string? Telefono { get; set; }
-
         [MaxLength(50)]
         public string? CodiceRiparazione { get; set; }
-
         [MaxLength(1000)]
         public string? Problema { get; set; }
-
         [Range(0.01, 999999.99, ErrorMessage = "Il prezzo deve essere maggiore di 0")]
         public decimal? PrezzoPreventivo { get; set; }
-
         [MaxLength(1000)]
         public string? Notes { get; set; }
-
         [MaxLength(50)]
         public string? Stato { get; set; }
-
         [MaxLength(20)]
         public string? StatoCode { get; set; }
-
         [MaxLength(100)]
         public string? UpdatedBy { get; set; }
     }

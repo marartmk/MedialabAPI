@@ -194,44 +194,47 @@ namespace MediaLabAPI.Services
         {
             var note = await _context.QuickRepairNotes
                 .FirstOrDefaultAsync(n => n.NoteId == noteId && !n.IsDeleted);
-
             if (note == null)
                 throw new ArgumentException("Nota non trovata");
-
-            // Aggiorna solo i campi forniti
+            if (dto.CustomerId.HasValue)
+            {
+                note.CustomerId = dto.CustomerId.Value;
+            }
+            else
+            {               
+                note.CustomerId = null;
+            }           
+            if (dto.DeviceId.HasValue)
+            {
+                note.DeviceId = dto.DeviceId.Value;
+            }
+            else
+            {                
+                note.DeviceId = null;
+            }
+            
             if (!string.IsNullOrWhiteSpace(dto.Brand))
                 note.Brand = dto.Brand;
-
             if (!string.IsNullOrWhiteSpace(dto.Model))
                 note.Model = dto.Model;
-
             if (dto.RagioneSociale != null)
                 note.RagioneSociale = dto.RagioneSociale;
-
             if (dto.Cognome != null)
                 note.Cognome = dto.Cognome;
-
             if (dto.Nome != null)
                 note.Nome = dto.Nome;
-
             if (dto.Telefono != null)
                 note.Telefono = dto.Telefono;
-
             if (dto.CodiceRiparazione != null)
                 note.CodiceRiparazione = dto.CodiceRiparazione;
-
             if (!string.IsNullOrWhiteSpace(dto.Problema))
                 note.Problema = dto.Problema;
-
             if (dto.PrezzoPreventivo.HasValue && dto.PrezzoPreventivo.Value > 0)
                 note.PrezzoPreventivo = dto.PrezzoPreventivo.Value;
-
             if (dto.Notes != null)
                 note.Notes = dto.Notes;
-
             if (!string.IsNullOrWhiteSpace(dto.Stato))
                 note.Stato = dto.Stato;
-
             if (!string.IsNullOrWhiteSpace(dto.StatoCode))
                 note.StatoCode = dto.StatoCode;
 
@@ -239,7 +242,6 @@ namespace MediaLabAPI.Services
             note.UpdatedBy = dto.UpdatedBy;
 
             await _context.SaveChangesAsync();
-
             _logger.LogInformation("Nota {NoteCode} aggiornata", note.NoteCode);
         }
 
