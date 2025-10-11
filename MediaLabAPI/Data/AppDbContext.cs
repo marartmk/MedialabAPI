@@ -33,6 +33,9 @@ public partial class AppDbContext : DbContext
 
     // DbSet Per Geolocalizzazione Affiliati
     public virtual DbSet<AffiliateGeolocation> AffiliateGeolocations { get; set; }
+    
+    // DbSet per gestione note di riparazione
+    public virtual DbSet<QuickRepairNote> QuickRepairNotes { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -929,6 +932,146 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => e.Quality)
                 .HasDatabaseName("IX_AffiliateGeolocations_Quality");
+        });
+
+        // 🆕 CONFIGURAZIONE QuickRepairNote
+        modelBuilder.Entity<QuickRepairNote>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("QuickRepairNotes");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(e => e.NoteId)
+                .IsRequired()
+                .HasDefaultValueSql("NEWID()");
+
+            entity.Property(e => e.NoteCode)
+                .HasMaxLength(50)
+                .IsRequired(false);
+
+            // 🔹 DeviceId è ora Guid? invece di string
+            entity.Property(e => e.DeviceId)
+                .IsRequired(false);
+
+            entity.Property(e => e.CustomerId)
+                .IsRequired(false);
+
+            entity.Property(e => e.CompanyId)
+                .IsRequired();
+
+            entity.Property(e => e.MultitenantId)
+                .IsRequired();
+
+            entity.Property(e => e.Brand)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Model)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.RagioneSociale)
+                .HasMaxLength(200);
+
+            entity.Property(e => e.Cognome)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Nome)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Telefono)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.CodiceRiparazione)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Problema)
+                .IsRequired()
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.PrezzoPreventivo)
+                .HasColumnType("decimal(10,2)")
+                .IsRequired();
+
+            entity.Property(e => e.Notes)
+                .HasMaxLength(1000);
+
+            entity.Property(e => e.Stato)
+                .IsRequired()
+                .HasMaxLength(50)
+                .HasDefaultValue("Aperta");
+
+            entity.Property(e => e.StatoCode)
+                .IsRequired()
+                .HasMaxLength(20)
+                .HasDefaultValue("OPEN");
+
+            entity.Property(e => e.ReceivedAt)
+                .HasColumnType("datetime")
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("(getdate())")
+                .IsRequired();
+
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime");
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValue(false)
+                .IsRequired();
+
+            // 🔹 RELAZIONI CON FK VERSO DeviceRegistry
+            entity.HasOne(e => e.Device)
+                .WithMany()
+                .HasForeignKey(e => e.DeviceId)
+                .HasPrincipalKey(d => d.DeviceId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Customer)
+                .WithMany()
+                .HasForeignKey(e => e.CustomerId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Company)
+                .WithMany()
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Indici
+            entity.HasIndex(e => e.NoteId)
+                .IsUnique()
+                .HasDatabaseName("IX_QuickRepairNotes_NoteId");
+
+            entity.HasIndex(e => e.NoteCode)
+                .IsUnique()
+                .HasDatabaseName("IX_QuickRepairNotes_NoteCode")
+                .HasFilter("[NoteCode] IS NOT NULL");
+
+            entity.HasIndex(e => e.DeviceId)
+                .HasDatabaseName("IX_QuickRepairNotes_DeviceId")
+                .HasFilter("[DeviceId] IS NOT NULL");
+
+            entity.HasIndex(e => e.MultitenantId)
+                .HasDatabaseName("IX_QuickRepairNotes_MultitenantId");
+
+            entity.HasIndex(e => e.StatoCode)
+                .HasDatabaseName("IX_QuickRepairNotes_StatoCode");
+
+            entity.HasIndex(e => e.ReceivedAt)
+                .HasDatabaseName("IX_QuickRepairNotes_ReceivedAt");
+
+            entity.HasIndex(e => new { e.MultitenantId, e.StatoCode })
+                .HasDatabaseName("IX_QuickRepairNotes_MultitenantId_StatoCode");
         });
 
 

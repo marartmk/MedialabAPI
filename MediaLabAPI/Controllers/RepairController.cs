@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using MediaLabAPI.DTOs;
+using MediaLabAPI.DTOs.Repair;
 using MediaLabAPI.Services;
 using MediaLabAPI.Models;
 
@@ -12,13 +13,20 @@ namespace MediaLabAPI.Controllers
     public class RepairController : ControllerBase
     {
         private readonly IRepairService _repairService;
+        private readonly IQuickRepairNoteService _quickRepairNoteService;
         private readonly ILogger<RepairController> _logger;
 
-        public RepairController(IRepairService repairService, ILogger<RepairController> logger)
+        public RepairController(
+            IRepairService repairService,
+            IQuickRepairNoteService quickRepairNoteService,
+            ILogger<RepairController> logger)
         {
             _repairService = repairService;
+            _quickRepairNoteService = quickRepairNoteService;
             _logger = logger;
         }
+
+        #region Standard Repairs (Existing Methods)
 
         /// <summary>
         /// Crea una nuova scheda di riparazione
@@ -89,8 +97,8 @@ namespace MediaLabAPI.Controllers
         /// <summary>
         /// Aggiorna lo stato di una riparazione
         /// </summary>
-        [HttpPut("{id}/status")]
-        public async Task<ActionResult> UpdateRepairStatus(int id, [FromBody] UpdateRepairStatusDto request)
+        [HttpPut("{id:guid}/status")]
+        public async Task<ActionResult> UpdateRepairStatus(Guid id, [FromBody] UpdateRepairStatusDto request)
         {
             try
             {
@@ -167,7 +175,7 @@ namespace MediaLabAPI.Controllers
         }
 
         /// <summary>
-        /// Ottiene i dati delle riparazioni per una lista liht
+        /// Ottiene i dati delle riparazioni per una lista light
         /// </summary>
         [HttpPost("search/light")]
         public async Task<ActionResult<IEnumerable<RepairDetailDto>>> SearchRepairsLight([FromBody] RepairSearchRequestDto searchRequest)
@@ -183,9 +191,150 @@ namespace MediaLabAPI.Controllers
                 return StatusCode(500, new { message = "Errore interno del server" });
             }
         }
+
+        #endregion
+
+        #region Quick Repair Notes (NEW)
+
+        /// <summary>
+        /// Crea una nuova nota di riparazione veloce
+        /// </summary>
+        [HttpPost("quick-note")]
+        public async Task<ActionResult<QuickRepairNoteResponseDto>> CreateQuickNote([FromBody] CreateQuickRepairNoteDto request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                var result = await _quickRepairNoteService.CreateQuickNoteAsync(request);
+
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning(ex, "Validation error creating quick note");
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating quick note");
+                return StatusCode(500, new { message = "Errore interno del server" });
+            }
+        }
+
+        /// <summary>
+        /// Ottiene una nota veloce per ID intero
+        /// </summary>
+        [HttpGet("quick-note/{id:int}")]
+        public async Task<ActionResult<QuickRepairNoteDetailDto>> GetQuickNoteById(int id)
+        {
+            try
+            {
+                var note = await _quickRepairNoteService.GetQuickNoteByIdAsync(id);
+
+                if (note == null)
+                    return NotFound(new { message = "Nota non trovata" });
+
+                return Ok(note);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting quick note {NoteId}", id);
+                return StatusCode(500, new { message = "Errore interno del server" });
+            }
+        }
+
+        /// <summary>
+        /// Ottiene una nota veloce per NoteId (Guid)
+        /// </summary>
+        [HttpGet("quick-note/guid/{noteId:guid}")]
+        public async Task<ActionResult<QuickRepairNoteDetailDto>> GetQuickNoteByNoteId(Guid noteId)
+        {
+            try
+            {
+                var note = await _quickRepairNoteService.GetQuickNoteByNoteIdAsync(noteId);
+
+                if (note == null)
+                    return NotFound(new { message = "Nota non trovata" });
+
+                return Ok(note);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting quick note {NoteId}", noteId);
+                return StatusCode(500, new { message = "Errore interno del server" });
+            }
+        }
+
+        /// <summary>
+        /// Cerca note veloci con filtri
+        /// </summary>
+        [HttpPost("quick-note/search")]
+        public async Task<ActionResult<IEnumerable<QuickRepairNoteDetailDto>>> SearchQuickNotes([FromBody] QuickRepairNoteSearchDto searchDto)
+        {
+            try
+            {
+                var notes = await _quickRepairNoteService.SearchQuickNotesAsync(searchDto);
+                return Ok(notes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching quick notes");
+                return StatusCode(500, new { message = "Errore interno del server" });
+            }
+        }
+
+        /// <summary>
+        /// Aggiorna una nota veloce
+        /// </summary>
+        [HttpPut("quick-note/{noteId:guid}")]
+        public async Task<ActionResult> UpdateQuickNote(Guid noteId, [FromBody] UpdateQuickRepairNoteDto request)
+        {
+            try
+            {
+                await _quickRepairNoteService.UpdateQuickNoteAsync(noteId, request);
+                return Ok(new { message = "Nota aggiornata con successo" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating quick note {NoteId}", noteId);
+                return StatusCode(500, new { message = "Errore interno del server" });
+            }
+        }
+
+        /// <summary>
+        /// Elimina una nota veloce (soft delete)
+        /// </summary>
+        [HttpDelete("quick-note/{noteId:guid}")]
+        public async Task<ActionResult> DeleteQuickNote(Guid noteId)
+        {
+            try
+            {
+                await _quickRepairNoteService.DeleteQuickNoteAsync(noteId);
+                return Ok(new { message = "Nota eliminata con successo" });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting quick note {NoteId}", noteId);
+                return StatusCode(500, new { message = "Errore interno del server" });
+            }
+        }
+
+        #endregion
     }
 
-    // DTO per aggiornamento stato
+    // DTO per aggiornamento stato (già esistente)
     public class UpdateRepairStatusDto
     {
         public string StatusCode { get; set; } = string.Empty;

@@ -467,10 +467,10 @@ namespace MediaLabAPI.Services
                 .ToListAsync();
         }
 
-        public async Task UpdateRepairStatusAsync(int repairId, string statusCode, string status, string? notes)
+        public async Task UpdateRepairStatusAsync(Guid repairId, string statusCode, string status, string? notes)
         {
             var repair = await _context.DeviceRepairs
-                .FirstOrDefaultAsync(r => r.Id == repairId && !r.IsDeleted);
+                .FirstOrDefaultAsync(r => r.RepairId == repairId && !r.IsDeleted);
 
             if (repair == null)
                 throw new ArgumentException("Riparazione non trovata");
@@ -628,11 +628,11 @@ namespace MediaLabAPI.Services
                     throw new ArgumentException("Riparazione non trovata");
 
                 // 🚫 BLOCCA MODIFICHE SU RIPARAZIONI COMPLETATE/CONSEGNATE
-                if (repair.RepairStatusCode.ToUpper() is "COMPLETED" or "DELIVERED")
-                {
-                    _logger.LogWarning("⚠️ Tentativo di modifica riparazione completata: {RepairCode}", repair.RepairCode);
-                    throw new InvalidOperationException("Impossibile modificare una riparazione completata o consegnata");
-                }
+                //if (repair.RepairStatusCode.ToUpper() is "COMPLETED" or "DELIVERED")
+                //{
+                //    _logger.LogWarning("⚠️ Tentativo di modifica riparazione completata: {RepairCode}", repair.RepairCode);
+                //    throw new InvalidOperationException("Impossibile modificare una riparazione completata o consegnata");
+                //}
 
                 var changes = new List<string>(); // 📝 Track delle modifiche per audit
 
@@ -705,7 +705,7 @@ namespace MediaLabAPI.Services
                             changes.Add($"Nome Tecnico: '{repair.TechnicianName}' → '{request.RepairData.TechnicianName}'");
                             repair.TechnicianName = request.RepairData.TechnicianName;
                         }
-                    }
+                    }                  
                 }
 
                 // 5️⃣ GESTIONE INTELLIGENTE NOTE (append vs replace)
@@ -1195,11 +1195,6 @@ namespace MediaLabAPI.Services
             e.IsDeleted = true;
             e.ModifiedData = DateTime.Now;
             await _context.SaveChangesAsync();
-        }
-
-
-
-
-
+        }       
     }
 }

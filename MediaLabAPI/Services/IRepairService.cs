@@ -11,7 +11,7 @@ namespace MediaLabAPI.Services
         Task<IEnumerable<DeviceRepair>> GetRepairsAsync(Guid? multitenantId, string? status);
         Task<IEnumerable<DeviceRepair>> GetRepairsByCustomerAsync(Guid customerId);
         Task<IEnumerable<DeviceRepair>> GetRepairsByDeviceAsync(int deviceId);
-        Task UpdateRepairStatusAsync(int repairId, string statusCode, string status, string? notes);        
+        Task UpdateRepairStatusAsync(Guid repairId, string statusCode, string status, string? notes);       
         Task UpdateRepairAsync(Guid repairId, UpdateRepairRequestDto request);
         Task<IEnumerable<RepairDetailDto>> GetRepairsLightAsync(RepairSearchRequestDto searchRequest);
         Task<RepairDetailDto?> GetRepairDetailByIdAsync(int id);
