@@ -25,6 +25,7 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<DeviceRepair> DeviceRepairs { get; set; }     
     public virtual DbSet<IncomingTest> IncomingTests { get; set; }
     public virtual DbSet<ExitTest> ExitTests { get; set; }
+    public virtual DbSet<ApiKey> ApiKeys { get; set; }
 
     // DbSets per il magazzino
     public virtual DbSet<WarehouseItem> WarehouseItems { get; set; }
@@ -36,6 +37,9 @@ public partial class AppDbContext : DbContext
     
     // DbSet per gestione note di riparazione
     public virtual DbSet<QuickRepairNote> QuickRepairNotes { get; set; }
+
+    // DbSet per gestione ricambi su scheda di riparazione
+    public virtual DbSet<RepairPart> RepairParts { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -1072,6 +1076,109 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => new { e.MultitenantId, e.StatoCode })
                 .HasDatabaseName("IX_QuickRepairNotes_MultitenantId_StatoCode");
+        });
+
+        // ApiKey
+        modelBuilder.Entity<ApiKey>(entity =>
+        {
+            entity.ToTable("ApiKeys");
+            entity.Property(e => e.ApiKeyValue).HasColumnName("ApiKey");
+        });
+
+        // 🆕 CONFIGURAZIONE RepairParts
+        modelBuilder.Entity<RepairPart>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("RepairParts");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(e => e.RepairId)
+                .IsRequired();
+
+            entity.Property(e => e.WarehouseItemId)
+                .IsRequired();
+
+            entity.Property(e => e.ItemId)
+                .IsRequired();
+
+            entity.Property(e => e.Code)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Name)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            entity.Property(e => e.Brand)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Model)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Quantity)
+                .IsRequired()
+                .HasDefaultValue(1);
+
+            entity.Property(e => e.UnitPrice)
+                .HasColumnType("decimal(10,2)")
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.LineTotal)
+                .HasColumnType("decimal(12,2)")
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.CompanyId)
+                .IsRequired();
+
+            entity.Property(e => e.MultitenantId)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("(getdate())")
+                .IsRequired();
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Notes)
+                .HasMaxLength(500);
+
+            // 🔧 RELAZIONI
+            entity.HasOne(e => e.DeviceRepair)
+                .WithMany()
+                .HasForeignKey(e => e.RepairId)
+                .HasPrincipalKey(r => r.RepairId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.WarehouseItem)
+                .WithMany()
+                .HasForeignKey(e => e.WarehouseItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Company)
+                .WithMany()
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // 🔧 INDICI
+            entity.HasIndex(e => e.RepairId)
+                .HasDatabaseName("IX_RepairParts_RepairId");
+
+            entity.HasIndex(e => e.WarehouseItemId)
+                .HasDatabaseName("IX_RepairParts_WarehouseItemId");
+
+            entity.HasIndex(e => e.MultitenantId)
+                .HasDatabaseName("IX_RepairParts_MultitenantId");
+
+            entity.HasIndex(e => new { e.RepairId, e.WarehouseItemId })
+                .HasDatabaseName("IX_RepairParts_RepairId_WarehouseItemId");
         });
 
 

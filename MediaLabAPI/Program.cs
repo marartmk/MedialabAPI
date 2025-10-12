@@ -53,6 +53,10 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IRepairService, RepairService>();
 builder.Services.AddScoped<IWarehouseService, WarehouseService>();
 builder.Services.AddScoped<IQuickRepairNoteService, QuickRepairNoteService>();
+builder.Services.AddScoped<IRepairPartsService, RepairPartsService>();
+
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
 
 var app = builder.Build();
 
