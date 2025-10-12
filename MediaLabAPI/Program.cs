@@ -23,7 +23,14 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(
+                "http://localhost",
+                "https://localhost",
+                "http://localhost:5173",
+                "https://localhost:5173",
+                "http://localhost:3000",
+                "https://medialabnexttest.dea40.it"                
+            )
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
