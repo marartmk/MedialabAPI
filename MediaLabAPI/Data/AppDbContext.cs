@@ -41,6 +41,9 @@ public partial class AppDbContext : DbContext
     // DbSet per gestione ricambi su scheda di riparazione
     public virtual DbSet<RepairPart> RepairParts { get; set; }
 
+    // DbSet per gestione i pagamenti
+    public virtual DbSet<RepairPayment> RepairPayments { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Server=192.168.3.20;Database=MedialabNexttest;User Id=sa;Password=4PCgKYB3yyj5hE78;TrustServerCertificate=True;");
@@ -1179,6 +1182,93 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => new { e.RepairId, e.WarehouseItemId })
                 .HasDatabaseName("IX_RepairParts_RepairId_WarehouseItemId");
+        });
+
+        // 🆕 CONFIGURAZIONE RepairPayment
+        modelBuilder.Entity<RepairPayment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("RepairPayments");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(e => e.RepairId)
+                .IsRequired();
+
+            entity.Property(e => e.PartsAmount)
+                .HasColumnType("decimal(12,2)")
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            entity.Property(e => e.LaborAmount)
+                .HasColumnType("decimal(12,2)")
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            // Campi calcolati - non mappare manualmente, gestiti dal DB
+            entity.Property(e => e.VatAmount)
+                .HasColumnType("decimal(12,2)")
+                .HasComputedColumnSql("(round(([PartsAmount]+[LaborAmount])*(0.22),(2)))", stored: true);
+
+            entity.Property(e => e.TotalAmount)
+                .HasColumnType("decimal(12,2)")
+                .HasComputedColumnSql("(round(([PartsAmount]+[LaborAmount])*(1.22),(2)))", stored: true);
+
+            entity.Property(e => e.CompanyId)
+                .IsRequired();
+
+            entity.Property(e => e.MultitenantId)
+                .IsRequired();
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("(getdate())")
+                .IsRequired();
+
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100);
+
+            entity.Property(e => e.Notes)
+                .HasMaxLength(500);
+
+            entity.Property(e => e.IsDeleted)
+                .HasDefaultValue(false)
+                .IsRequired();
+
+            entity.Property(e => e.DeletedAt)
+                .HasColumnType("datetime");
+
+            entity.Property(e => e.DeletedBy)
+                .HasMaxLength(100);
+
+            // 🔧 RELAZIONI
+            entity.HasOne(e => e.DeviceRepair)
+                .WithMany()
+                .HasForeignKey(e => e.RepairId)
+                .HasPrincipalKey(r => r.RepairId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Company)
+                .WithMany()
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // 🔧 INDICI
+            entity.HasIndex(e => e.RepairId)
+                .HasDatabaseName("IX_RepairPayments_RepairId");
+
+            entity.HasIndex(e => e.CompanyId)
+                .HasDatabaseName("IX_RepairPayments_CompanyId");
+
+            entity.HasIndex(e => e.MultitenantId)
+                .HasDatabaseName("IX_RepairPayments_MultitenantId");
+
+            entity.HasIndex(e => e.CreatedAt)
+                .HasDatabaseName("IX_RepairPayments_CreatedAt");
+
+            entity.HasIndex(e => new { e.MultitenantId, e.RepairId })
+                .HasDatabaseName("IX_RepairPayments_MultitenantId_RepairId");
         });
 
 
