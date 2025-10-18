@@ -22,7 +22,7 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<SysUser> SysUsers { get; set; }
     public virtual DbSet<C_ANA_Operators> C_ANA_Operators { get; set; }
     public virtual DbSet<DeviceRegistry> DeviceRegistry { get; set; }
-    public virtual DbSet<DeviceRepair> DeviceRepairs { get; set; }     
+    public virtual DbSet<DeviceRepair> DeviceRepairs { get; set; }
     public virtual DbSet<IncomingTest> IncomingTests { get; set; }
     public virtual DbSet<ExitTest> ExitTests { get; set; }
     public virtual DbSet<ApiKey> ApiKeys { get; set; }
@@ -34,7 +34,7 @@ public partial class AppDbContext : DbContext
 
     // DbSet Per Geolocalizzazione Affiliati
     public virtual DbSet<AffiliateGeolocation> AffiliateGeolocations { get; set; }
-    
+
     // DbSet per gestione note di riparazione
     public virtual DbSet<QuickRepairNote> QuickRepairNotes { get; set; }
 
@@ -43,6 +43,11 @@ public partial class AppDbContext : DbContext
 
     // DbSet per gestione i pagamenti
     public virtual DbSet<RepairPayment> RepairPayments { get; set; }
+
+    // DbSets per il magazzino apparati
+    public virtual DbSet<DeviceInventory> DeviceInventory { get; set; }
+    public virtual DbSet<DeviceInventorySupplier> DeviceInventorySuppliers { get; set; }
+    public virtual DbSet<DeviceInventoryMovement> DeviceInventoryMovements { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -1269,6 +1274,136 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => new { e.MultitenantId, e.RepairId })
                 .HasDatabaseName("IX_RepairPayments_MultitenantId_RepairId");
+        });
+
+        // 🔹 CONFIGURAZIONE DeviceInventory
+        modelBuilder.Entity<DeviceInventory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("DeviceInventory");
+
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.DeviceId).IsRequired().HasDefaultValueSql("NEWID()");
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.DeviceType).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Brand).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Model).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.IMEI).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.ESN).HasMaxLength(50);
+            entity.Property(e => e.SerialNumber).HasMaxLength(100);
+            entity.Property(e => e.Color).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.DeviceCondition).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.IsCourtesyDevice).IsRequired().HasDefaultValue(false);
+            entity.Property(e => e.DeviceStatus).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.SupplierId).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.PurchasePrice).HasColumnType("decimal(10,2)").IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.SellingPrice).HasColumnType("decimal(10,2)").IsRequired().HasDefaultValue(0);
+            entity.Property(e => e.PurchaseDate).HasColumnType("date");
+            entity.Property(e => e.Location).HasMaxLength(100);
+            entity.Property(e => e.CompanyId).IsRequired();
+            entity.Property(e => e.MultitenantId).IsRequired();
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2").HasDefaultValueSql("(getdate())").IsRequired();
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime2");
+            entity.Property(e => e.CreatedBy).HasMaxLength(100);
+            entity.Property(e => e.UpdatedBy).HasMaxLength(100);
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false).IsRequired();
+
+            // Relazioni
+            entity.HasOne(e => e.Company)
+                .WithMany()
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Supplier)
+                .WithMany(s => s.Devices)
+                .HasForeignKey(e => e.SupplierId)
+                .HasPrincipalKey(s => s.SupplierId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Indici
+            entity.HasIndex(e => e.DeviceId).IsUnique().HasDatabaseName("UQ_DeviceInventory_DeviceId");
+            entity.HasIndex(e => e.Code).IsUnique().HasDatabaseName("UQ_DeviceInventory_Code").HasFilter("[IsDeleted] = 0");
+            entity.HasIndex(e => e.IMEI).IsUnique().HasDatabaseName("UQ_DeviceInventory_IMEI").HasFilter("[IsDeleted] = 0");
+            entity.HasIndex(e => e.CompanyId).HasDatabaseName("IX_DeviceInventory_CompanyId");
+            entity.HasIndex(e => e.MultitenantId).HasDatabaseName("IX_DeviceInventory_MultitenantId");
+            entity.HasIndex(e => e.DeviceType).HasDatabaseName("IX_DeviceInventory_DeviceType");
+            entity.HasIndex(e => e.DeviceStatus).HasDatabaseName("IX_DeviceInventory_DeviceStatus");
+            entity.HasIndex(e => e.Brand).HasDatabaseName("IX_DeviceInventory_Brand");
+            entity.HasIndex(e => e.SupplierId).HasDatabaseName("IX_DeviceInventory_SupplierId");
+        });
+
+        // 🔹 CONFIGURAZIONE DeviceInventorySupplier
+        modelBuilder.Entity<DeviceInventorySupplier>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("DeviceInventorySuppliers");
+
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.SupplierId).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Contact).HasMaxLength(200);
+            entity.Property(e => e.Address).HasMaxLength(500);
+            entity.Property(e => e.Phone).HasMaxLength(100);
+            entity.Property(e => e.Email).HasMaxLength(100);
+            entity.Property(e => e.CompanyId).IsRequired();
+            entity.Property(e => e.MultitenantId).IsRequired();
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2").HasDefaultValueSql("(getdate())").IsRequired();
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime2");
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false).IsRequired();
+
+            // Relazioni
+            entity.HasOne(e => e.Company)
+                .WithMany()
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(e => e.Devices)
+                .WithOne(d => d.Supplier)
+                .HasForeignKey(d => d.SupplierId)
+                .HasPrincipalKey(s => s.SupplierId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Indici
+            entity.HasIndex(e => new { e.MultitenantId, e.SupplierId })
+                .IsUnique()
+                .HasDatabaseName("IX_DeviceInventorySuppliers_MultitenantId_SupplierId")
+                .HasFilter("[IsDeleted] = 0");
+        });
+
+        // 🔹 CONFIGURAZIONE DeviceInventoryMovement
+        modelBuilder.Entity<DeviceInventoryMovement>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("DeviceInventoryMovements");
+
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.MovementId).IsRequired().HasDefaultValueSql("NEWID()");
+            entity.Property(e => e.DeviceInventoryId).IsRequired();
+            entity.Property(e => e.DeviceId).IsRequired();
+            entity.Property(e => e.MovementType).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.FromStatus).HasMaxLength(20);
+            entity.Property(e => e.ToStatus).HasMaxLength(20);
+            entity.Property(e => e.Reference).HasMaxLength(200);
+            entity.Property(e => e.CompanyId).IsRequired();
+            entity.Property(e => e.MultitenantId).IsRequired();
+            entity.Property(e => e.MovementDate).HasColumnType("datetime2").HasDefaultValueSql("(getdate())").IsRequired();
+            entity.Property(e => e.CreatedBy).HasMaxLength(100);
+
+            // ✅ RELAZIONE CORRETTA - Non serve WithMany()
+            entity.HasOne(e => e.Device)
+                .WithMany() // ← DeviceInventory non ha una collection di Movements
+                .HasForeignKey(e => e.DeviceInventoryId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Customer)
+                .WithMany()
+                .HasForeignKey(e => e.CustomerId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Indici
+            entity.HasIndex(e => e.DeviceInventoryId).HasDatabaseName("IX_DeviceInventoryMovements_DeviceInventoryId");
+            entity.HasIndex(e => e.DeviceId).HasDatabaseName("IX_DeviceInventoryMovements_DeviceId");
+            entity.HasIndex(e => e.MovementDate).HasDatabaseName("IX_DeviceInventoryMovements_MovementDate");
         });
 
 

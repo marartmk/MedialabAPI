@@ -59,6 +59,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IRepairService, RepairService>();
 builder.Services.AddScoped<IWarehouseService, WarehouseService>();
+builder.Services.AddScoped<IDeviceInventoryService, DeviceInventoryService>();
 builder.Services.AddScoped<IQuickRepairNoteService, QuickRepairNoteService>();
 builder.Services.AddScoped<IRepairPartsService, RepairPartsService>();
 
