@@ -178,6 +178,7 @@ namespace MediaLabAPI.Services
         }
 
         // 🔧 METODO PULITO PER SALVARE DIAGNOSTICA - SOLO MAPPING DIRETTO
+        // 🔧 METODO AGGIORNATO PER SALVARE DIAGNOSTICA - MAPPING 1:1
         private async Task<bool> SaveDiagnosticDataAsync(DeviceRepair repair, List<DiagnosticItemDto> diagnosticItems)
         {
             try
@@ -191,135 +192,99 @@ namespace MediaLabAPI.Services
                 // Crea l'entità IncomingTest
                 var incomingTest = new IncomingTest
                 {
-                    RepairId = repair.RepairId,           // 🔧 Collega alla riparazione tramite GUID
+                    RepairId = repair.RepairId,
                     CompanyId = repair.CompanyId,
                     MultitenantId = repair.MultitenantId,
                     CreatedData = DateTime.Now,
                     IsDeleted = false
                 };
 
-                // 🎯 MAPPING DIRETTO DIAGNOSTICA FRONTEND → DATABASE
-                // Mappiamo SOLO gli elementi attivamente selezionati dal frontend
+                // 🎯 MAPPING 1:1 - Frontend ID → Campo Database
                 foreach (var item in diagnosticItems.Where(d => d.Active))
                 {
                     switch (item.Id.ToLower())
                     {
-                        case "device-info":
-                            // Info dispositivo verificate - telefono funzionante
-                            incomingTest.TelefonoSpento = false;
+                        case "telefono-spento":
+                            incomingTest.TelefonoSpento = true;
                             break;
-
-                        case "battery":
-                            incomingTest.Batteria = true;
+                        case "vetro-rotto":
+                            incomingTest.VetroRotto = true;
                             break;
-
-                        case "camera":
-                            incomingTest.FotocameraPosteriore = true;
-                            incomingTest.FotocameraAnteriore = true;
-                            break;
-
-                        case "cellular":
-                            incomingTest.Rete = true;
-                            break;
-
-                        case "face-id":
-                            incomingTest.FaceId = true;
-                            break;
-
-                        case "scanner":
-                        case "touch-id":
-                            incomingTest.TouchId = true;
-                            break;
-
-                        case "sensors":
-                            incomingTest.SensoreDiProssimita = true;
-                            break;
-
-                        case "system":
-                        case "clock":
-                        case "services":
-                        case "software":
-                            incomingTest.SchedaMadre = true;
-                            break;
-
-                        case "wifi":
-                            incomingTest.WiFi = true;
-                            break;
-
-                        case "rf-cellular":
-                            incomingTest.Chiamata = true;
-                            break;
-
-                        case "sim":
-                            // SIM funzionante = rete attiva
-                            incomingTest.Rete = true;
-                            break;
-
-                        // 🔧 ELEMENTI HARDWARE FISICI (se presenti nel frontend)
                         case "touchscreen":
                             incomingTest.Touchscreen = true;
                             break;
-
                         case "lcd":
-                        case "display":
                             incomingTest.Lcd = true;
                             break;
-
+                        case "frame-scollato":
+                            incomingTest.FrameScollato = true;
+                            break;
+                        case "batteria":
+                            incomingTest.Batteria = true;
+                            break;
                         case "dock-ricarica":
-                        case "charging-port":
                             incomingTest.DockDiRicarica = true;
                             break;
-
-                        case "speaker":
-                        case "audio":
-                            incomingTest.SpeakerBuzzer = true;
-                            break;
-
-                        case "microphone":
-                        case "microfono":
-                            incomingTest.MicrofonoChiamate = true;
-                            break;
-
-                        case "volume-buttons":
-                        case "tasti-volume":
-                            incomingTest.TastiVolumeMuto = true;
-                            break;
-
-                        case "power-button":
-                        case "tasto-power":
-                            incomingTest.TastoStandbyPower = true;
-                            break;
-
-                        case "home-button":
-                        case "tasto-home":
-                            incomingTest.TastoHome = true;
-                            break;
-
                         case "back-cover":
-                        case "cover-posteriore":
                             incomingTest.BackCover = true;
                             break;
-
-                        case "frame":
                         case "telaio":
                             incomingTest.Telaio = true;
                             break;
-
-                        // ⚠️ ELEMENTI CON PROBLEMI
-                        case "wireless-problem":
-                            // Problema wireless rilevato
-                            incomingTest.WiFi = false;
+                        case "tasti-volume-muto":
+                            incomingTest.TastiVolumeMuto = true;
                             break;
-
-                        // 📝 ELEMENTI NON MAPPATI - Solo log informativo
-                        case "apple-pay":
-                        case "bluetooth":
-                        case "magsafe":
-                            _logger.LogInformation("Diagnostic item '{ItemId}' ({Label}) passed but not mapped to specific DB field",
-                                item.Id, item.Label);
+                        case "tasto-standby-power":
+                            incomingTest.TastoStandbyPower = true;
                             break;
-
-                        // 🎯 ELEMENTI SCONOSCIUTI
+                        case "sensore-prossimita":
+                            incomingTest.SensoreDiProssimita = true;
+                            break;
+                        case "microfono-chiamate":
+                            incomingTest.MicrofonoChiamate = true;
+                            break;
+                        case "microfono-ambientale":
+                            incomingTest.MicrofonoAmbientale = true;
+                            break;
+                        case "altoparlante-chiamata":
+                            incomingTest.AltoparlanteChiamata = true;
+                            break;
+                        case "speaker-buzzer":
+                            incomingTest.SpeakerBuzzer = true;
+                            break;
+                        case "vetro-fotocamera-posteriore":
+                            incomingTest.VetroFotocameraPosteriore = true;
+                            break;
+                        case "fotocamera-posteriore":
+                            incomingTest.FotocameraPosteriore = true;
+                            break;
+                        case "fotocamera-anteriore":
+                            incomingTest.FotocameraAnteriore = true;
+                            break;
+                        case "tasto-home":
+                            incomingTest.TastoHome = true;
+                            break;
+                        case "touch-id":
+                            incomingTest.TouchId = true;
+                            break;
+                        case "face-id":
+                            incomingTest.FaceId = true;
+                            break;
+                        case "wifi":
+                            incomingTest.WiFi = true;
+                            break;
+                        case "rete":
+                            incomingTest.Rete = true;
+                            break;
+                        case "chiamata":
+                            incomingTest.Chiamata = true;
+                            break;
+                        case "scheda-madre":
+                            incomingTest.SchedaMadre = true;
+                            break;
+                        case "vetro-posteriore":
+                            incomingTest.VetroPosteriore = true;
+                            break;
                         default:
                             _logger.LogWarning("⚠️ Unknown diagnostic item '{ItemId}' with label '{Label}' - no mapping available",
                                 item.Id, item.Label);
@@ -331,20 +296,17 @@ namespace MediaLabAPI.Services
                 _context.IncomingTests.Add(incomingTest);
                 await _context.SaveChangesAsync();
 
-                // 📊 LOG DETTAGLIATO
-                var mappedItems = diagnosticItems.Where(d => d.Active).Select(d => d.Label).ToList();
                 var mappedCount = diagnosticItems.Count(d => d.Active);
-
                 _logger.LogInformation("✅ IncomingTest saved with ID: {TestId} for Repair: {RepairCode}. " +
-                                      "Mapped {MappedCount} active diagnostic items: {MappedItems}",
-                    incomingTest.Id, repair.RepairCode, mappedCount, string.Join(", ", mappedItems));
+                                      "Mapped {MappedCount} active diagnostic items",
+                    incomingTest.Id, repair.RepairCode, mappedCount);
 
                 return true;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Error saving diagnostic data for repair {RepairCode}", repair.RepairCode);
-                throw; // Rilancia per far fallire la transazione
+                throw;
             }
         }
 
@@ -705,7 +667,7 @@ namespace MediaLabAPI.Services
                             changes.Add($"Nome Tecnico: '{repair.TechnicianName}' → '{request.RepairData.TechnicianName}'");
                             repair.TechnicianName = request.RepairData.TechnicianName;
                         }
-                    }                  
+                    }
                 }
 
                 // 5️⃣ GESTIONE INTELLIGENTE NOTE (append vs replace)
@@ -982,43 +944,43 @@ namespace MediaLabAPI.Services
         {
             var e = await _context.IncomingTests.AsNoTracking()
                      .FirstOrDefaultAsync(x => x.RepairId == repairId && x.IsDeleted == false);
-            return e is null ? null : new IncomingTestDto
+
+            if (e == null) return null;
+
+            return new IncomingTestDto
             {
                 Id = e.Id,
                 RepairId = e.RepairId,
                 CompanyId = e.CompanyId,
                 MultitenantId = e.MultitenantId,
 
-                // gruppi FE
-                Battery = e.Batteria,
-                WiFi = e.WiFi,
-                FaceId = e.FaceId,
-                Scanner = e.TouchId,
-                Sensors = e.SensoreDiProssimita,
-                System = e.SchedaMadre,
-                Cellular = e.Rete,
-                RfCellular = e.Rete,
-                Camera = (e.FotocameraPosteriore == true || e.FotocameraAnteriore == true),
-
-                // campi DB diretti
+                // ===== MAPPING 1:1 DIRETTO =====
                 TelefonoSpento = e.TelefonoSpento,
                 VetroRotto = e.VetroRotto,
                 Touchscreen = e.Touchscreen,
                 Lcd = e.Lcd,
                 FrameScollato = e.FrameScollato,
+                Batteria = e.Batteria,
                 DockDiRicarica = e.DockDiRicarica,
                 BackCover = e.BackCover,
                 Telaio = e.Telaio,
                 TastiVolumeMuto = e.TastiVolumeMuto,
                 TastoStandbyPower = e.TastoStandbyPower,
+                SensoreDiProssimita = e.SensoreDiProssimita,
                 MicrofonoChiamate = e.MicrofonoChiamate,
                 MicrofonoAmbientale = e.MicrofonoAmbientale,
-                AltoparlantteChiamata = e.AltoparlantteChiamata,
+                AltoparlanteChiamata = e.AltoparlanteChiamata,
                 SpeakerBuzzer = e.SpeakerBuzzer,
                 VetroFotocameraPosteriore = e.VetroFotocameraPosteriore,
+                FotocameraPosteriore = e.FotocameraPosteriore,
+                FotocameraAnteriore = e.FotocameraAnteriore,
                 TastoHome = e.TastoHome,
                 TouchId = e.TouchId,
+                FaceId = e.FaceId,
+                WiFi = e.WiFi,
+                Rete = e.Rete,
                 Chiamata = e.Chiamata,
+                SchedaMadre = e.SchedaMadre,
                 VetroPosteriore = e.VetroPosteriore
             };
         }
@@ -1045,37 +1007,33 @@ namespace MediaLabAPI.Services
                 _context.IncomingTests.Add(d);
             }
 
-            // FE → entity
-            d.Batteria = dto.Battery;
-            d.WiFi = dto.WiFi;
-            d.FaceId = dto.FaceId;
-            d.TouchId = dto.TouchId ?? dto.Scanner;
-            d.SensoreDiProssimita = dto.Sensors;
-            d.SchedaMadre = dto.System;
-            d.Rete = dto.Cellular ?? dto.RfCellular;
-            if (dto.Camera.HasValue)
-            {
-                d.FotocameraPosteriore = dto.Camera;
-                d.FotocameraAnteriore = dto.Camera;
-            }
-
+            // ===== MAPPING 1:1 DIRETTO - DTO → ENTITY =====
             d.TelefonoSpento = dto.TelefonoSpento;
             d.VetroRotto = dto.VetroRotto;
             d.Touchscreen = dto.Touchscreen;
             d.Lcd = dto.Lcd;
             d.FrameScollato = dto.FrameScollato;
+            d.Batteria = dto.Batteria;
             d.DockDiRicarica = dto.DockDiRicarica;
             d.BackCover = dto.BackCover;
             d.Telaio = dto.Telaio;
             d.TastiVolumeMuto = dto.TastiVolumeMuto;
             d.TastoStandbyPower = dto.TastoStandbyPower;
+            d.SensoreDiProssimita = dto.SensoreDiProssimita;
             d.MicrofonoChiamate = dto.MicrofonoChiamate;
             d.MicrofonoAmbientale = dto.MicrofonoAmbientale;
-            d.AltoparlantteChiamata = dto.AltoparlantteChiamata;
+            d.AltoparlanteChiamata = dto.AltoparlanteChiamata;
             d.SpeakerBuzzer = dto.SpeakerBuzzer;
             d.VetroFotocameraPosteriore = dto.VetroFotocameraPosteriore;
+            d.FotocameraPosteriore = dto.FotocameraPosteriore;
+            d.FotocameraAnteriore = dto.FotocameraAnteriore;
             d.TastoHome = dto.TastoHome;
+            d.TouchId = dto.TouchId;
+            d.FaceId = dto.FaceId;
+            d.WiFi = dto.WiFi;
+            d.Rete = dto.Rete;
             d.Chiamata = dto.Chiamata;
+            d.SchedaMadre = dto.SchedaMadre;
             d.VetroPosteriore = dto.VetroPosteriore;
 
             d.ModifiedData = DateTime.Now;
@@ -1098,13 +1056,18 @@ namespace MediaLabAPI.Services
         {
             var e = await _context.ExitTests.AsNoTracking()
                      .FirstOrDefaultAsync(x => x.RepairId == repairId && (x.IsDeleted == false || x.IsDeleted == null));
-            return e is null ? null : new ExitTestDto
+
+            if (e == null) return null;
+
+            return new ExitTestDto
             {
                 Id = e.Id,
                 RepairId = e.RepairId,
                 CompanyId = e.CompanyId,
                 MultitenantId = e.MultitenantId,
+                TelefonoSpento = e.TelefonoSpento,
 
+                // ===== MAPPING 1:1 DIRETTO =====
                 VetroRotto = e.VetroRotto,
                 Touchscreen = e.Touchscreen,
                 Lcd = e.Lcd,
@@ -1156,6 +1119,8 @@ namespace MediaLabAPI.Services
                 _context.ExitTests.Add(d);
             }
 
+            // ===== MAPPING 1:1 DIRETTO - DTO → ENTITY =====
+            d.TelefonoSpento = dto.TelefonoSpento;
             d.VetroRotto = dto.VetroRotto;
             d.Touchscreen = dto.Touchscreen;
             d.Lcd = dto.Lcd;
@@ -1195,6 +1160,6 @@ namespace MediaLabAPI.Services
             e.IsDeleted = true;
             e.ModifiedData = DateTime.Now;
             await _context.SaveChangesAsync();
-        }       
+        }
     }
 }

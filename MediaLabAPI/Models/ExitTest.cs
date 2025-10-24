@@ -12,6 +12,7 @@ namespace MediaLabAPI.Models
         [Column("company_id")] public Guid CompanyId { get; set; }
         [Column("multitenant_id")] public Guid MultitenantId { get; set; }
         [Column("repair_id")] public Guid? RepairId { get; set; }
+        [Column("telefono_spento")] public bool? TelefonoSpento { get; set; }
 
         [Column("vetro_rotto")] public bool? VetroRotto { get; set; }
         [Column("touchscreen")] public bool? Touchscreen { get; set; }

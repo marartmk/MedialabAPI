@@ -1,5 +1,4 @@
-﻿// DTOs/Diagnostic/ExitTestDto.cs
-namespace MediaLabAPI.DTOs
+﻿namespace MediaLabAPI.DTOs
 {
     public class ExitTestDto
     {
@@ -7,8 +6,12 @@ namespace MediaLabAPI.DTOs
         public Guid? RepairId { get; set; }
         public Guid CompanyId { get; set; }
         public Guid MultitenantId { get; set; }
+        public bool? TelefonoSpento { get; set; }
 
-        // Campi DB (tabella ExitTests) — NB: qui NON c'è TelefonoSpento
+        // ===== MAPPING 1:1 CON I CAMPI DEL DATABASE =====
+        // Tutti i campi corrispondono ESATTAMENTE alla tabella ExitTests
+        // ⚠️ NOTA: ExitTests NON ha il campo TelefonoSpento
+
         public bool? VetroRotto { get; set; }
         public bool? Touchscreen { get; set; }
         public bool? Lcd { get; set; }
@@ -22,7 +25,7 @@ namespace MediaLabAPI.DTOs
         public bool? SensoreDiProssimita { get; set; }
         public bool? MicrofonoChiamate { get; set; }
         public bool? MicrofonoAmbientale { get; set; }
-        public bool? AltoparlanteChiamata { get; set; }
+        public bool? AltoparlanteChiamata { get; set; }  // ⚠️ ExitTest usa "AltoparlanteChiamata" (senza doppia T)
         public bool? SpeakerBuzzer { get; set; }
         public bool? VetroFotocameraPosteriore { get; set; }
         public bool? FotocameraPosteriore { get; set; }

@@ -64,7 +64,7 @@ namespace MediaLabAPI.Models
         public bool? MicrofonoAmbientale { get; set; }
 
         [Column("altoparlante_chiamata")]
-        public bool? AltoparlantteChiamata { get; set; }
+        public bool? AltoparlanteChiamata { get; set; }
 
         [Column("speaker_buzzer")]
         public bool? SpeakerBuzzer { get; set; }

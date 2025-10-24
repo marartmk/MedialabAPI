@@ -66,6 +66,7 @@ builder.Services.AddScoped<IRepairPartsService, RepairPartsService>();
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
 builder.Services.AddScoped<IRepairPaymentService, RepairPaymentService>();
+builder.Services.AddScoped<ISaleService, SaleService>();
 
 var app = builder.Build();
 

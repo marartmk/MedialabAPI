@@ -49,6 +49,10 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<DeviceInventorySupplier> DeviceInventorySuppliers { get; set; }
     public virtual DbSet<DeviceInventoryMovement> DeviceInventoryMovements { get; set; }
 
+    // DbSets per gestione vendite
+    public virtual DbSet<DeviceSale> DeviceSales { get; set; }
+    public virtual DbSet<SalePayment> SalePayments { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Server=192.168.3.20;Database=MedialabNexttest;User Id=sa;Password=4PCgKYB3yyj5hE78;TrustServerCertificate=True;");
@@ -476,7 +480,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.SensoreDiProssimita).HasColumnName("sensore_di_prossimita");
             entity.Property(e => e.MicrofonoChiamate).HasColumnName("microfono_chiamate");
             entity.Property(e => e.MicrofonoAmbientale).HasColumnName("microfono_ambientale");
-            entity.Property(e => e.AltoparlantteChiamata).HasColumnName("altoparlante_chiamata");
+            entity.Property(e => e.AltoparlanteChiamata).HasColumnName("altoparlante_chiamata");
             entity.Property(e => e.SpeakerBuzzer).HasColumnName("speaker_buzzer");
             entity.Property(e => e.VetroFotocameraPosteriore).HasColumnName("vetro_fotocamera_posteriore");
             entity.Property(e => e.FotocameraPosteriore).HasColumnName("fotocamera_posteriore");
@@ -537,6 +541,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.CompanyId).HasColumnName("company_id").IsRequired();
             entity.Property(e => e.MultitenantId).HasColumnName("multitenant_id").IsRequired();
             entity.Property(e => e.RepairId).HasColumnName("repair_id");
+            entity.Property(e => e.TelefonoSpento).HasColumnName("telefono_spento");
 
             entity.Property(e => e.VetroRotto).HasColumnName("vetro_rotto");
             entity.Property(e => e.Touchscreen).HasColumnName("touchscreen");
@@ -1404,6 +1409,199 @@ public partial class AppDbContext : DbContext
             entity.HasIndex(e => e.DeviceInventoryId).HasDatabaseName("IX_DeviceInventoryMovements_DeviceInventoryId");
             entity.HasIndex(e => e.DeviceId).HasDatabaseName("IX_DeviceInventoryMovements_DeviceId");
             entity.HasIndex(e => e.MovementDate).HasDatabaseName("IX_DeviceInventoryMovements_MovementDate");
+        });
+
+        modelBuilder.Entity<DeviceSale>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("DeviceSales");
+
+            // ID e chiavi
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.SaleId).IsRequired().HasDefaultValueSql("NEWID()");
+            entity.Property(e => e.SaleCode).HasMaxLength(50);
+
+            // Tipo vendita
+            entity.Property(e => e.SaleType).IsRequired().HasMaxLength(20);
+
+            // IDs prodotto
+            entity.Property(e => e.DeviceId);
+            entity.Property(e => e.DeviceRegistryId);  // ✅ AGGIUNGI QUESTA RIGA
+            entity.Property(e => e.AccessoryId);
+
+            // Dati prodotto
+            entity.Property(e => e.Brand).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Model).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.SerialNumber).HasMaxLength(100);
+            entity.Property(e => e.IMEI).HasMaxLength(50);
+
+            // IDs relazionali
+            entity.Property(e => e.CustomerId).IsRequired();
+            entity.Property(e => e.CompanyId).IsRequired();
+            entity.Property(e => e.MultitenantId).IsRequired();
+
+            // Prezzi
+            entity.Property(e => e.SalePrice).HasColumnType("decimal(18,2)").IsRequired();
+            entity.Property(e => e.OriginalPrice).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.Discount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.VatRate).HasColumnType("decimal(5,2)").IsRequired().HasDefaultValue(22.00M);
+            entity.Property(e => e.TotalAmount).HasColumnType("decimal(18,2)").IsRequired();
+
+            // Pagamento
+            entity.Property(e => e.PaymentType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.PaymentStatus).IsRequired().HasMaxLength(50).HasDefaultValue("Da Pagare");
+            entity.Property(e => e.PaidAmount).HasColumnType("decimal(18,2)").HasDefaultValue(0);
+            entity.Property(e => e.RemainingAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.InstallmentsCount);
+            entity.Property(e => e.InstallmentAmount).HasColumnType("decimal(18,2)");
+
+            // Stato
+            entity.Property(e => e.SaleStatus).IsRequired().HasMaxLength(50).HasDefaultValue("Bozza");
+            entity.Property(e => e.SaleStatusCode).IsRequired().HasMaxLength(20).HasDefaultValue("DRAFT");
+
+            // Documenti
+            entity.Property(e => e.InvoiceId);
+            entity.Property(e => e.InvoiceNumber).HasMaxLength(50);
+            entity.Property(e => e.InvoiceDate).HasColumnType("datetime2");
+            entity.Property(e => e.ReceiptId);
+            entity.Property(e => e.ReceiptNumber).HasMaxLength(50);
+            entity.Property(e => e.ReceiptDate).HasColumnType("datetime2");
+
+            // Venditore
+            entity.Property(e => e.SellerCode).HasMaxLength(50);
+            entity.Property(e => e.SellerName).HasMaxLength(100);
+
+            // Note e accessori
+            entity.Property(e => e.Notes).HasMaxLength(2000);
+            entity.Property(e => e.IncludedAccessories).HasMaxLength(500);
+
+            // Garanzia
+            entity.Property(e => e.HasWarranty).HasDefaultValue(false);
+            entity.Property(e => e.WarrantyMonths);
+            entity.Property(e => e.WarrantyExpiryDate).HasColumnType("datetime2");
+
+            // Date
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2").HasDefaultValueSql("(getutcdate())").IsRequired();
+            entity.Property(e => e.SaleDate).HasColumnType("datetime2");
+            entity.Property(e => e.DeliveryDate).HasColumnType("datetime2");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime2");
+
+            // Metadata
+            entity.Property(e => e.CreatedBy).HasMaxLength(100);
+            entity.Property(e => e.UpdatedBy).HasMaxLength(100);
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+            entity.Property(e => e.DeletedAt).HasColumnType("datetime2");
+
+            // ✅ RELAZIONI CORRETTE
+            entity.HasOne(e => e.Device)
+                .WithMany()
+                .HasForeignKey(e => e.DeviceRegistryId)  // ✅ CAMBIATO: usa DeviceRegistryId
+                .HasPrincipalKey(d => d.Id)              // ✅ AGGIUNTO: specifica che usa Id (int)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Customer)
+                .WithMany()
+                .HasForeignKey(e => e.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Company)
+                .WithMany()
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Indici
+            entity.HasIndex(e => e.SaleId)
+                .IsUnique()
+                .HasDatabaseName("UQ_DeviceSales_SaleId");
+
+            entity.HasIndex(e => e.SaleCode)
+                .IsUnique()
+                .HasDatabaseName("UQ_DeviceSales_SaleCode")
+                .HasFilter("[IsDeleted] = 0 AND [SaleCode] IS NOT NULL");
+
+            entity.HasIndex(e => e.SaleType)
+                .HasDatabaseName("IX_DeviceSales_SaleType");
+
+            entity.HasIndex(e => e.CustomerId)
+                .HasDatabaseName("IX_DeviceSales_CustomerId");
+
+            entity.HasIndex(e => e.DeviceId)
+                .HasDatabaseName("IX_DeviceSales_DeviceId");
+
+            entity.HasIndex(e => e.CompanyId)
+                .HasDatabaseName("IX_DeviceSales_CompanyId");
+
+            entity.HasIndex(e => e.MultitenantId)
+                .HasDatabaseName("IX_DeviceSales_MultitenantId");
+
+            entity.HasIndex(e => e.SaleStatusCode)
+                .HasDatabaseName("IX_DeviceSales_SaleStatusCode");
+
+            entity.HasIndex(e => e.PaymentStatus)
+                .HasDatabaseName("IX_DeviceSales_PaymentStatus");
+
+            entity.HasIndex(e => e.CreatedAt)
+                .HasDatabaseName("IX_DeviceSales_CreatedAt");
+
+            entity.HasIndex(e => e.SaleDate)
+                .HasDatabaseName("IX_DeviceSales_SaleDate");
+
+            entity.HasIndex(e => new { e.MultitenantId, e.SaleStatusCode })
+                .HasDatabaseName("IX_DeviceSales_MultitenantId_SaleStatusCode");
+
+            entity.HasIndex(e => new { e.MultitenantId, e.PaymentStatus })
+                .HasDatabaseName("IX_DeviceSales_MultitenantId_PaymentStatus");
+
+            entity.HasIndex(e => new { e.MultitenantId, e.CreatedAt })
+                .HasDatabaseName("IX_DeviceSales_MultitenantId_CreatedAt");
+
+            entity.HasIndex(e => e.IMEI)
+                .HasDatabaseName("IX_DeviceSales_IMEI")
+                .HasFilter("[IMEI] IS NOT NULL");
+
+            entity.HasIndex(e => e.SerialNumber)
+                .HasDatabaseName("IX_DeviceSales_SerialNumber")
+                .HasFilter("[SerialNumber] IS NOT NULL");
+        });
+
+        // 🔹 CONFIGURAZIONE SalePayment
+        modelBuilder.Entity<SalePayment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("SalePayments");
+
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.PaymentId).IsRequired().HasDefaultValueSql("NEWID()");
+            entity.Property(e => e.SaleId).IsRequired();
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)").IsRequired();
+            entity.Property(e => e.PaymentMethod).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.TransactionReference).HasMaxLength(100);
+            entity.Property(e => e.PaymentDate).HasColumnType("datetime2").HasDefaultValueSql("(getutcdate())").IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.Property(e => e.ReceivedBy).HasMaxLength(100);
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2").HasDefaultValueSql("(getutcdate())").IsRequired();
+
+            // Relazione con DeviceSale
+            entity.HasOne(e => e.Sale)
+                .WithMany(s => s.Payments)
+                .HasForeignKey(e => e.SaleId)
+                .HasPrincipalKey(s => s.SaleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Indici
+            entity.HasIndex(e => e.PaymentId)
+                .IsUnique()
+                .HasDatabaseName("UQ_SalePayments_PaymentId");
+
+            entity.HasIndex(e => e.SaleId)
+                .HasDatabaseName("IX_SalePayments_SaleId");
+
+            entity.HasIndex(e => e.PaymentDate)
+                .HasDatabaseName("IX_SalePayments_PaymentDate");
+
+            entity.HasIndex(e => new { e.SaleId, e.PaymentDate })
+                .HasDatabaseName("IX_SalePayments_SaleId_PaymentDate");
         });
 
 
