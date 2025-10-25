@@ -95,6 +95,11 @@ namespace MediaLabAPI.Services
                 _context.DeviceSales.Add(sale);
                 await _context.SaveChangesAsync();
 
+                var cnn = _context.Database.GetDbConnection();
+                var affected = await _context.SaveChangesAsync();
+                _logger.LogWarning("DB={Db} on {Srv} | affected={A} | NewId={Id}", cnn.Database, cnn.DataSource, affected, sale.Id);
+
+
                 _logger.LogInformation("Vendita creata con successo: {SaleCode}", saleCode);
 
                 return new CreateSaleResponseDto
