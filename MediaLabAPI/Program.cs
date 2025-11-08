@@ -67,6 +67,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
 builder.Services.AddScoped<IRepairPaymentService, RepairPaymentService>();
 builder.Services.AddScoped<ISaleService, SaleService>();
+builder.Services.AddScoped<IBookingService, BookingService>();
 
 var app = builder.Build();
 
