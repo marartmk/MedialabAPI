@@ -71,8 +71,8 @@ namespace MediaLabAPI.Services
                 BillingInfo = request.BillingInfo,
 
                 // Stato
-                BookingStatus = "Confermata",
-                BookingStatusCode = "CONFIRMED",
+                BookingStatus = "Prenotata",
+                BookingStatusCode = "BOOKED",
 
                 // Contesto
                 CompanyId = request.CompanyId,
