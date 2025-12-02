@@ -56,6 +56,10 @@ public partial class AppDbContext : DbContext
     // DbSets per gestione Booking
     public DbSet<DeviceBooking> DeviceBookings { get; set; }
 
+    // DbSets per gestione acquisti
+    public virtual DbSet<DevicePurchase> DevicePurchases { get; set; }
+    public virtual DbSet<PurchasePayment> PurchasePayments { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Server=192.168.3.20;Database=MedialabNexttest;User Id=sa;Password=4PCgKYB3yyj5hE78;TrustServerCertificate=True;");
@@ -1605,6 +1609,230 @@ public partial class AppDbContext : DbContext
 
             entity.HasIndex(e => new { e.SaleId, e.PaymentDate })
                 .HasDatabaseName("IX_SalePayments_SaleId_PaymentDate");
+        });
+
+
+        // 🔹 CONFIGURAZIONE DevicePurchase
+        modelBuilder.Entity<DevicePurchase>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("DevicePurchases");
+
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.PurchaseId).IsRequired().HasDefaultValueSql("NEWID()");
+            entity.Property(e => e.PurchaseCode).HasMaxLength(50);
+
+            // Tipo e condizione
+            entity.Property(e => e.PurchaseType).IsRequired().HasMaxLength(20).HasDefaultValue("Apparato");
+            entity.Property(e => e.DeviceCondition).IsRequired().HasMaxLength(20).HasDefaultValue("Nuovo");
+
+            // IDs prodotto
+            entity.Property(e => e.DeviceId);
+            entity.Property(e => e.DeviceRegistryId);
+            entity.Property(e => e.AccessoryId);
+
+            // Dati prodotto
+            entity.Property(e => e.Brand).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Model).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.SerialNumber).HasMaxLength(100);
+            entity.Property(e => e.IMEI).HasMaxLength(50);
+
+            // IDs relazionali
+            entity.Property(e => e.SupplierId).IsRequired();
+            entity.Property(e => e.CompanyId).IsRequired();
+            entity.Property(e => e.MultitenantId).IsRequired();
+
+            // Prezzi
+            entity.Property(e => e.PurchasePrice).HasColumnType("decimal(18,2)").IsRequired();
+            entity.Property(e => e.ShippingCost).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.OtherCosts).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.VatRate).HasColumnType("decimal(5,2)").IsRequired().HasDefaultValue(22.00M);
+            entity.Property(e => e.TotalAmount).HasColumnType("decimal(18,2)").IsRequired();
+
+            // Pagamento
+            entity.Property(e => e.PaymentType).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.PaymentStatus).IsRequired().HasMaxLength(50).HasDefaultValue("Da Pagare");
+            entity.Property(e => e.PaidAmount).HasColumnType("decimal(18,2)").HasDefaultValue(0);
+            entity.Property(e => e.RemainingAmount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.InstallmentsCount);
+            entity.Property(e => e.InstallmentAmount).HasColumnType("decimal(18,2)");
+
+            // Stato
+            entity.Property(e => e.PurchaseStatus).IsRequired().HasMaxLength(50).HasDefaultValue("Bozza");
+            entity.Property(e => e.PurchaseStatusCode).IsRequired().HasMaxLength(20).HasDefaultValue("DRAFT");
+
+            // Documenti fornitore
+            entity.Property(e => e.SupplierInvoiceId);
+            entity.Property(e => e.SupplierInvoiceNumber).HasMaxLength(50);
+            entity.Property(e => e.SupplierInvoiceDate).HasColumnType("datetime2");
+            entity.Property(e => e.OrderNumber).HasMaxLength(50);
+            entity.Property(e => e.OrderDate).HasColumnType("datetime2");
+
+            // DDT
+            entity.Property(e => e.DDTNumber).HasMaxLength(50);
+            entity.Property(e => e.DDTDate).HasColumnType("datetime2");
+
+            // Acquirente
+            entity.Property(e => e.BuyerCode).HasMaxLength(50);
+            entity.Property(e => e.BuyerName).HasMaxLength(100);
+
+            // Note e accessori
+            entity.Property(e => e.Notes).HasMaxLength(2000);
+            entity.Property(e => e.IncludedAccessories).HasMaxLength(500);
+
+            // Controllo qualità
+            entity.Property(e => e.QualityCheckStatus).HasMaxLength(50);
+            entity.Property(e => e.QualityCheckNotes).HasMaxLength(1000);
+            entity.Property(e => e.QualityCheckDate).HasColumnType("datetime2");
+            entity.Property(e => e.QualityCheckedBy).HasMaxLength(100);
+
+            // Garanzia fornitore
+            entity.Property(e => e.HasSupplierWarranty).HasDefaultValue(false);
+            entity.Property(e => e.SupplierWarrantyMonths);
+            entity.Property(e => e.SupplierWarrantyExpiryDate).HasColumnType("datetime2");
+
+            // Date
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2").HasDefaultValueSql("(getutcdate())").IsRequired();
+            entity.Property(e => e.PurchaseDate).HasColumnType("datetime2");
+            entity.Property(e => e.ReceivedDate).HasColumnType("datetime2");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime2");
+
+            // Metadata
+            entity.Property(e => e.CreatedBy).HasMaxLength(100);
+            entity.Property(e => e.UpdatedBy).HasMaxLength(100);
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+            entity.Property(e => e.DeletedAt).HasColumnType("datetime2");
+            entity.Property(e => e.DeletedBy).HasMaxLength(100);
+
+            // ✅ RELAZIONI
+            entity.HasOne(e => e.Device)
+                .WithMany()
+                .HasForeignKey(e => e.DeviceRegistryId)
+                .HasPrincipalKey(d => d.Id)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Supplier)
+                .WithMany()
+                .HasForeignKey(e => e.SupplierId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.Company)
+                .WithMany()
+                .HasForeignKey(e => e.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Indici
+            entity.HasIndex(e => e.PurchaseId)
+                .IsUnique()
+                .HasDatabaseName("UQ_DevicePurchases_PurchaseId");
+
+            entity.HasIndex(e => e.PurchaseCode)
+                .IsUnique()
+                .HasDatabaseName("UQ_DevicePurchases_PurchaseCode")
+                .HasFilter("[IsDeleted] = 0 AND [PurchaseCode] IS NOT NULL");
+
+            entity.HasIndex(e => e.PurchaseType)
+                .HasDatabaseName("IX_DevicePurchases_PurchaseType");
+
+            entity.HasIndex(e => e.DeviceCondition)
+                .HasDatabaseName("IX_DevicePurchases_DeviceCondition");
+
+            entity.HasIndex(e => e.SupplierId)
+                .HasDatabaseName("IX_DevicePurchases_SupplierId");
+
+            entity.HasIndex(e => e.DeviceId)
+                .HasDatabaseName("IX_DevicePurchases_DeviceId");
+
+            entity.HasIndex(e => e.DeviceRegistryId)
+                .HasDatabaseName("IX_DevicePurchases_DeviceRegistryId");
+
+            entity.HasIndex(e => e.CompanyId)
+                .HasDatabaseName("IX_DevicePurchases_CompanyId");
+
+            entity.HasIndex(e => e.MultitenantId)
+                .HasDatabaseName("IX_DevicePurchases_MultitenantId");
+
+            entity.HasIndex(e => e.PurchaseStatusCode)
+                .HasDatabaseName("IX_DevicePurchases_PurchaseStatusCode");
+
+            entity.HasIndex(e => e.PaymentStatus)
+                .HasDatabaseName("IX_DevicePurchases_PaymentStatus");
+
+            entity.HasIndex(e => e.QualityCheckStatus)
+                .HasDatabaseName("IX_DevicePurchases_QualityCheckStatus")
+                .HasFilter("[QualityCheckStatus] IS NOT NULL");
+
+            entity.HasIndex(e => e.CreatedAt)
+                .HasDatabaseName("IX_DevicePurchases_CreatedAt");
+
+            entity.HasIndex(e => e.PurchaseDate)
+                .HasDatabaseName("IX_DevicePurchases_PurchaseDate")
+                .HasFilter("[PurchaseDate] IS NOT NULL");
+
+            entity.HasIndex(e => e.ReceivedDate)
+                .HasDatabaseName("IX_DevicePurchases_ReceivedDate")
+                .HasFilter("[ReceivedDate] IS NOT NULL");
+
+            entity.HasIndex(e => new { e.MultitenantId, e.PurchaseStatusCode })
+                .HasDatabaseName("IX_DevicePurchases_MultitenantId_PurchaseStatusCode");
+
+            entity.HasIndex(e => new { e.MultitenantId, e.PaymentStatus })
+                .HasDatabaseName("IX_DevicePurchases_MultitenantId_PaymentStatus");
+
+            entity.HasIndex(e => new { e.MultitenantId, e.CreatedAt })
+                .HasDatabaseName("IX_DevicePurchases_MultitenantId_CreatedAt");
+
+            entity.HasIndex(e => e.IMEI)
+                .HasDatabaseName("IX_DevicePurchases_IMEI")
+                .HasFilter("[IMEI] IS NOT NULL");
+
+            entity.HasIndex(e => e.SerialNumber)
+                .HasDatabaseName("IX_DevicePurchases_SerialNumber")
+                .HasFilter("[SerialNumber] IS NOT NULL");
+
+            entity.HasIndex(e => e.SupplierInvoiceNumber)
+                .HasDatabaseName("IX_DevicePurchases_SupplierInvoiceNumber")
+                .HasFilter("[SupplierInvoiceNumber] IS NOT NULL");
+        });
+
+        // 🔹 CONFIGURAZIONE PurchasePayment
+        modelBuilder.Entity<PurchasePayment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("PurchasePayments");
+
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.PaymentId).IsRequired().HasDefaultValueSql("NEWID()");
+            entity.Property(e => e.PurchaseId).IsRequired();
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)").IsRequired();
+            entity.Property(e => e.PaymentMethod).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.TransactionReference).HasMaxLength(100);
+            entity.Property(e => e.PaymentDate).HasColumnType("datetime2").HasDefaultValueSql("(getutcdate())").IsRequired();
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.Property(e => e.PaidBy).HasMaxLength(100);
+            entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime2").HasDefaultValueSql("(getutcdate())").IsRequired();
+
+            // Relazione con DevicePurchase
+            entity.HasOne(e => e.Purchase)
+                .WithMany(p => p.Payments)
+                .HasForeignKey(e => e.PurchaseId)
+                .HasPrincipalKey(p => p.PurchaseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Indici
+            entity.HasIndex(e => e.PaymentId)
+                .IsUnique()
+                .HasDatabaseName("UQ_PurchasePayments_PaymentId");
+
+            entity.HasIndex(e => e.PurchaseId)
+                .HasDatabaseName("IX_PurchasePayments_PurchaseId");
+
+            entity.HasIndex(e => e.PaymentDate)
+                .HasDatabaseName("IX_PurchasePayments_PaymentDate");
+
+            entity.HasIndex(e => new { e.PurchaseId, e.PaymentDate })
+                .HasDatabaseName("IX_PurchasePayments_PurchaseId_PaymentDate");
         });
 
 
